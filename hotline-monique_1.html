@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOTLINE MONIQUE — PODA NEON</title>
+<style>
+  html,body{margin:0;padding:0;background:#08030f;color:#ffb3d9;font-family:"Courier New",monospace;overflow:hidden}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:
+     radial-gradient(circle at 50% 40%, #200a2e 0%, #0a0312 60%, #050109 100%)}
+  #frame{position:relative;width:min(96vw,1240px);aspect-ratio:16/9;border:3px solid #ff2e88;
+     box-shadow:0 0 0 3px #1b0525, 0 0 40px #ff2e8877, inset 0 0 40px #00000099;background:#000}
+  canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;
+     image-rendering:crisp-edges;filter:saturate(1.25) contrast(1.06)}
+  #scan{position:absolute;inset:0;pointer-events:none;opacity:.28;mix-blend-mode:overlay;
+     background:repeating-linear-gradient(0deg,#000 0 1px,#fff0 1px 3px)}
+  #glow{position:absolute;inset:-8%;pointer-events:none;mix-blend-mode:screen;opacity:.30;
+     background:radial-gradient(circle at 30% 30%,#ff2e8855,#0000 55%),radial-gradient(circle at 75% 70%,#00e5ff55,#0000 55%)}
+  #tip{position:fixed;left:0;right:0;bottom:4px;text-align:center;font-size:11px;color:#ff2e8899;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="frame">
+  <canvas id="game" width="640" height="360"></canvas>
+  <div id="glow"></div><div id="scan"></div>
+</div></div>
+<div id="tip">WASD mover · MOUSE mirar · CLIQUE atirar/golpear · C trocar arma · E pegar arma · R reiniciar fase · M som · ENTER avançar diálogo · ESC pular</div>
+<script>
+"use strict";
+/* =========================================================================
+   HOTLINE MONIQUE — PODA NEON
+   Top-down / pseudo-isométrico, pixel, psicodélico.
+   Campanhas: PODADOR (vs Monique + Máfia Vardo) e ALAN BANANA (vs Johnny Calcinha)
+   ========================================================================= */
+
+const STORY = {};
+
+STORY.podador = {
+  title: "O PODADOR",
+  sub: "campanha do coringa da poda",
+  villain: "MONIQUE",
+  foe: "MÁFIA VARDO",
+  prologue: [
+    {w:"NARRADOR", t:`VILA NEON, 1989. A cidade não dorme: ela cochila de olho aberto, com a televisão ligada num canal que não existe.`},
+    {w:"NARRADOR", t:`Aqui todo mundo tem duas profissões: a que paga o aluguel e a que paga o karma. O Podador tem as duas na mesma mão.`},
+    {w:"NARRADOR", t:`De dia ele poda as árvores da prefeitura. De noite ele veste a maquiagem, pinta o sorriso vermelho de orelha a orelha e poda outras coisas.`},
+    {w:"PODADOR", t:`Eu não escolhi o palhaço. O palhaço é só o uniforme mais honesto que existe. Todo mundo nessa cidade usa máscara, eu só tive a decência de pintar a minha.`},
+    {w:"PODADOR", t:`Alan. ALAN. Levanta dessa poltrona, sua fruta murcha. Chegou envelope na porta.`},
+    {w:"ALAN", t:`Fruta murcha é a senhora sua mãe, palhaço de aniversário infantil falido. Eu estou em REPOUSO TÉCNICO. Banana precisa amadurecer.`},
+    {w:"PODADOR", t:`Amadurecer? Você tem trinta e quatro anos e uma casca de neon. Você não amadurece, você fermenta.`},
+    {w:"ALAN", t:`E você é um homem adulto que compra tinta branca no atacado. Não me venha com moral, Coringa de posto de gasolina.`},
+    {w:"NARRADOR", t:`O envelope não tinha remetente. Tinha uma foto do Podador dormindo. Tirada de dentro do apartamento.`},
+    {w:"PODADOR", t:`...Ela entrou aqui.`},
+    {w:"ALAN", t:`Ela quem? Fala o nome. Vai, fala. Você fica esquisito quando não fala o nome.`},
+    {w:"PODADOR", t:`Monique.`},
+    {w:"ALAN", t:`Pronto. Falou. O termostato do apartamento caiu cinco graus e a geladeira começou a rezar.`},
+    {w:"NARRADOR", t:`Monique. Ex de ninguém e vítima de todos. Uma mulher com a agenda de um santo e o histórico de um incêndio.`},
+    {w:"NARRADOR", t:`Ela não bate. Ela reclama que você bateu primeiro. E ela sempre tem testemunha, sempre tem print, sempre tem plateia.`},
+    {w:"MONIQUE", t:`Alô? Podador? Não desliga. NÃO DESLIGA. Eu só queria dizer que eu te perdoo. Por tudo. Por aquilo que você nem fez ainda.`},
+    {w:"PODADOR", t:`Monique, é meia-noite e quarenta.`},
+    {w:"MONIQUE", t:`Ah, agora eu incomodo? Agora eu sou o problema? Você é um macho escroto, sabia? Um lixo. Um MONSTRO com sorriso pintado.`},
+    {w:"MONIQUE", t:`Eu chorei três horas hoje por sua causa. TRÊS. E você nem sabe. Ninguém entende o que eu passo. Ninguém. Eu sou a vítima dessa história, e você vai aprender isso do jeito mais caro.`},
+    {w:"PODADOR", t:`Você mandou alguém tirar foto de mim dormindo.`},
+    {w:"MONIQUE", t:`Eu mandei alguém CUIDAR de você. Interpretação é problema seu. Boa noite, monstro. Dorme com um olho aberto, tá? Beijo. Te amo. Te odeio. Beijo.`},
+    {w:"ALAN", t:`Ela desligou fazendo aquele barulhinho de beijo. O barulhinho de beijo dela é o som que um alarme de incêndio faz quando aprende a mentir.`},
+    {w:"PODADOR", t:`Pega a faca, Alan.`},
+    {w:"ALAN", t:`Já peguei. Só uma pergunta: por que EU tenho que ir? Eu sou uma banana. Bananas são pacifistas. Bananas caem no chão e viram bolo.`},
+    {w:"PODADOR", t:`Você vai porque se eu morrer sozinho você vai chorar na frente de todo mundo e passar vergonha. Estou te poupando do luto.`},
+    {w:"ALAN", t:`Que consideração. Coringa gentil. O único homem do mundo que te salva e te insulta na mesma frase, com desconto.`},
+    {w:"NARRADOR", t:`Naquela madrugada, Monique já tinha assinado o contrato dela com a Máfia Vardo. O preço da cabeça do Podador foi pago em prints, lágrimas e ouro roubado.`},
+    {w:"NARRADOR", t:`Regra de sobrevivência número um: as armas estão no cenário. Ninguém aqui recarrega por amor. Regra número dois: a faca só funciona nas costas de quem não te viu.`},
+    {w:"NARRADOR", t:`Regra número três: você vai morrer. Muitas vezes. A cidade te devolve. É o único carinho que ela tem.`}
+  ],
+  chapters: [
+    { name:"CAP. 1 — LIGAÇÃO ÀS 03:47", sub:"cobiça, cortiço e cano curto", seed:1337, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`Endereço veio na secretária eletrônica, com voz de homem e sotaque de escada de prédio velho: o cortiço da Rua Vardo, terceiro andar.`},
+        {w:"PODADOR", t:`Três caras de cassetete e um com revólver. Alan, você fica atrás de mim.`},
+        {w:"ALAN", t:`Eu fico atrás de você SEMPRE, porque você é largo e eu sou uma sobremesa. É estratégia de banana: proteja o miolo.`},
+        {w:"PODADOR", t:`Se você levar tiro, promete que cai em cima de alguém importante? Morre útil pelo menos uma vez.`},
+        {w:"ALAN", t:`Se EU levar tiro, você vai chorar tanto que a maquiagem vai escorrer e a cidade vai ver que embaixo do palhaço tem um jardineiro triste.`},
+        {w:"PODADOR", t:`...Vamos subir.`},
+        {w:"MONIQUE", t:`ALÔ? Eu sei que você está aí. Eu vejo sua sombra na cortina, monstro. Eu falei pra eles não te matarem rápido. Eu pedi CARINHO. Eu sou boa assim.`},
+        {w:"MONIQUE", t:`Você me obrigou a fazer isso. Você me obriga a tudo. Se você tivesse me respondido no domingo, esses homens estariam em casa com os filhos.`},
+        {w:"ALAN", t:`Ela está falando pelo interfone. Ela pagou os caras E o interfone. Isso é dedicação. Isso é planejamento. Isso é assustador.`},
+        {w:"PODADOR", t:`Munição contada, Alan. Nove tiros na pistola, e nove tiros é o que separa a gente de virar adubo.`},
+        {w:"ALAN", t:`Adubo. Que poético. Podador virando adubo. É o ciclo da vida, palhaço.`}
+      ],
+      post:[
+        {w:"ALAN", t:`Cinco corpos, um cano quente e você matou o último com o TACO. Com o taco, Podador. Isso não é economia, isso é sadismo com planilha.`},
+        {w:"PODADOR", t:`Bala é dinheiro. Taco é gratuito. Você é caro e não serve pra nada, e ainda assim eu te trago.`},
+        {w:"ALAN", t:`Eu sirvo de MORAL. Eu sou o coração desse duo. Você é o fígado.`},
+        {w:"NARRADOR", t:`No bolso do morto havia um bilhete cor-de-rosa, com letra redonda de quem escreve devagar pra parecer inocente.`},
+        {w:"MONIQUE", t:`"Se ele morrer, eu choro no velório e todos vão me abraçar. Se ele viver, eu choro na delegacia e todos vão me abraçar. Eu ganho de qualquer jeito. — M."`},
+        {w:"PODADOR", t:`Ela não quer me matar. Ela quer plateia.`},
+        {w:"ALAN", t:`Pior: ela quer as duas coisas, e na ordem que der mais audiência.`}
+      ] },
+    { name:"CAP. 2 — FERRO-VELHO DO TIO ZORKA", sub:"óleo, ferrugem e um clarinete", seed:2451, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`O ferro-velho da família Vardo tem doze carros empilhados, um cão sem nome e um homem chamado Zorka que afina clarinete pra relaxar antes de quebrar dedos.`},
+        {w:"ALAN", t:`Podador, eu li o dossiê. "Zorka, contador da máfia, cinco condenações, um disco de clarinete gravado na cadeia." O disco chama "Lágrimas de Latão".`},
+        {w:"PODADOR", t:`Você leu o dossiê inteiro?`},
+        {w:"ALAN", t:`Eu leio TUDO. Sou uma banana ALFABETIZADA, seu palhaço analfabeto funcional que só sabe ler tesoura de poda.`},
+        {w:"PODADOR", t:`Eu sei ler. Eu só não gosto do que está escrito.`},
+        {w:"MONIQUE", t:`Podador, atende. ATENDE. Eu falei pro Zorka que você me machucou. Eu chorei tanto no telefone que ele baixou o preço. Sabia que a minha dor tem desconto por atacado?`},
+        {w:"MONIQUE", t:`Eu contei que você me trancou. Que você gritou. Não aconteceu, mas PODERIA ter acontecido, e o que poderia acontecer é quase verdade. Você entende? VOCÊ NUNCA ENTENDE, LIXO.`},
+        {w:"PODADOR", t:`Alan, ela criou uma economia própria. Ela transformou mentira em moeda e a máfia aceita.`},
+        {w:"ALAN", t:`E a cotação está subindo. Amanhã eu vou ser acusado de ter empurrado ela de uma escada que não existe, num prédio que nunca foi construído.`},
+        {w:"PODADOR", t:`Fica perto das prateleiras. Tem escopeta em cima da bancada, e eu não quero você segurando escopeta.`},
+        {w:"ALAN", t:`Por quê? Porque eu não tenho pulso?`},
+        {w:"PODADOR", t:`Porque você tem entusiasmo. Entusiasmo com escopeta é como fósforo em posto de gasolina.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`O clarinete continuou tocando por trinta segundos depois que a mão parou. Vitrola. Zorka nem estava no galpão.`},
+        {w:"ALAN", t:`Ele fugiu. E deixou a vitrola tocando pra gente gastar bala em um móvel. Isso é humilhante. Nós fomos zoados por um sofá musical.`},
+        {w:"PODADOR", t:`Gastamos quatro tiros num clarinete. Se contar isso pra alguém, eu te descasco.`},
+        {w:"ALAN", t:`Eu vou contar pra TODO MUNDO. Vou mandar carta pro jornal. "PALHAÇO EXECUTA INSTRUMENTO DE SOPRO EM VILA NEON".`},
+        {w:"NARRADOR", t:`Na parede, escrito com dedo em óleo de motor: "ELA PAGOU EM CHORO. NÓS ACEITAMOS."`},
+        {w:"PODADOR", t:`A máfia inteira virou fã-clube dela.`},
+        {w:"ALAN", t:`Não. Virou refém. Tem diferença, e eles ainda não sabem qual.`}
+      ] },
+    { name:"CAP. 3 — SAUNA NEON", sub:"vapor, azulejo e navalha", seed:3390, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`A sauna da Rua 7 é onde a Máfia Vardo fecha negócio, porque homem nu não usa gravador. Também não usa colete.`},
+        {w:"ALAN", t:`Eu não vou entrar de banana em uma sauna. Eu vou COZINHAR. Vou virar purê. Vou sair daqui como sobremesa de hospital.`},
+        {w:"PODADOR", t:`Você já é sobremesa de hospital. Só falta a colher.`},
+        {w:"ALAN", t:`E você é um palhaço com problema de sono e nenhum amigo além de mim. Vamos ver quem ri no fim, ADUBO.`},
+        {w:"PODADOR", t:`Vapor mata visão. Vapor também mata a visão deles. Faca aqui funciona: eles não veem a gente chegar.`},
+        {w:"ALAN", t:`E quando eles VEEM? Porque quando veem, a faca é um cumprimento educado antes do tiro.`},
+        {w:"PODADOR", t:`Aí a gente improvisa com o que tiver na parede.`},
+        {w:"MONIQUE", t:`Eu estou tão CANSADA de você me obrigar a ser cruel. Eu era uma pessoa doce. Eu tinha um gato. Eu regava planta. Você destruiu isso.`},
+        {w:"MONIQUE", t:`Eu contei pra minha terapeuta que você me persegue. Ela acreditou. Ela SEMPRE acredita. Eu troquei de terapeuta quatro vezes até achar uma que acredita rápido.`},
+        {w:"ALAN", t:`Ela fez casting de terapeuta. Ela fez CASTING.`},
+        {w:"PODADOR", t:`Ela sempre faz. Toda plateia dela passou por seleção.`},
+        {w:"MONIQUE", t:`Você é um monstro, Podador. E o pior tipo: o monstro que as pessoas gostam. Eu vou consertar isso. Eu vou fazer a cidade te ver como eu te vejo.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Sete homens no azulejo. O vapor pintou tudo de rosa por causa da luz e do resto.`},
+        {w:"ALAN", t:`Eu escorreguei DUAS vezes e matei um homem por acidente com uma cadeira de plástico. Isso conta como habilidade?`},
+        {w:"PODADOR", t:`Conta como sorte com testemunha. E eu sou a testemunha, então oficialmente não aconteceu.`},
+        {w:"ALAN", t:`Você é um traste. Sabe o que dói? Que você é o meu melhor amigo. Isso diz coisas horríveis sobre a minha vida.`},
+        {w:"PODADOR", t:`Diz coisas horríveis sobre a MINHA. Você é uma banana, Alan. Eu escolhi uma fruta pra confiar a minha vida.`},
+        {w:"ALAN", t:`E a fruta nunca te deixou pra trás. Nem uma vez. Pensa nisso enquanto tira sangue da maquiagem.`},
+        {w:"NARRADOR", t:`Havia um telefone na parede da recepção. Estava fora do gancho. Do outro lado, alguém respirava e contava.`}
+      ] },
+    { name:"CAP. 4 — CASSINO VARDO", sub:"chefe: NIKOLAI PUNHAL", seed:4712, boss:"NIKOLAI PUNHAL",
+      pre:[
+        {w:"NARRADOR", t:`O cassino Vardo não tem janela, não tem relógio e não tem saída sinalizada. Tudo de propósito. Aqui o tempo é do dono.`},
+        {w:"ALAN", t:`Nikolai Punhal. O cara que arrancou o próprio dente pra usar de ficha de pôquer. Eu li isso e comi meia caixa de biscoito de nervoso.`},
+        {w:"PODADOR", t:`Você come de nervoso, come de alegria, come de tédio. Você é uma banana que come. Isso é canibalismo estrutural.`},
+        {w:"ALAN", t:`É AUTOCUIDADO. E olha quem fala: um homem que jantou café e chiclete três dias seguidos porque "estava pensando".`},
+        {w:"MONIQUE", t:`Nikolai é um cavalheiro. Ele me ouviu por QUATRO HORAS. Você nunca me ouviu quatro horas, seu macho escroto emocionalmente indisponível.`},
+        {w:"MONIQUE", t:`Eu mostrei os prints. Eu editei um pouco. Editar não é mentir, é ORGANIZAR a verdade pra ficar mais fácil de entender.`},
+        {w:"PODADOR", t:`Você organizou a verdade tirando as partes onde você aparece.`},
+        {w:"MONIQUE", t:`Eu APAREÇO em todas! Eu sou a vítima em todas! Você não entende porque você é um lixo com sorriso pintado, e hoje o Nikolai vai apagar esse sorriso com um punhal de mesa de sinuca.`},
+        {w:"ALAN", t:`Podador. Sério agora. Se ele te pegar, eu não vou conseguir carregar você. Eu tenho braço de fruta.`},
+        {w:"PODADOR", t:`Então não me pega. Simples.`},
+        {w:"ALAN", t:`É esse o plano? "Não morra"? Você é o pior estrategista que já vestiu roxo.`},
+        {w:"PODADOR", t:`É o único plano que sempre funcionou até agora, e olha: estamos vivos e você reclamando. Prova empírica.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Nikolai caiu de costas na mesa de roleta e a bolinha parou no zero. A casa sempre ganha, mas hoje a casa estava fechada.`},
+        {w:"NIKOLAI", t:`Ela... ela mentiu pra mim, palhaço. Ela disse que você tinha matado o irmão dela. Ela nem TEM irmão.`},
+        {w:"PODADOR", t:`Ela tem. O irmão está vivo, mora em Curitiba e bloqueou o número dela em 1985.`},
+        {w:"NIKOLAI", t:`...Que mulher.`},
+        {w:"ALAN", t:`Ele morreu impressionado. Isso é o mais triste. Ele morreu FÃ.`},
+        {w:"MONIQUE", t:`Você matou o Nikolai. Ele tinha família, Podador. Você é um MONSTRO. Eu vou fazer uma vigília. Vou levar vela. Vou chorar bonito, com a luz certa.`},
+        {w:"PODADOR", t:`Ela vai chorar por um homem que ela contratou pra me matar.`},
+        {w:"ALAN", t:`E vai chorar melhor que a viúva. Você vai ver.`}
+      ] },
+    { name:"CAP. 5 — BOATE LÁGRIMA DE CRISTAL", sub:"chefe: BABA CORVO", seed:5566, boss:"BABA CORVO",
+      pre:[
+        {w:"NARRADOR", t:`Baba Corvo lê a mão das pessoas e cobra caro pra mentir bonito. É a matriarca da lavagem de dinheiro dos Vardo e a única que Monique respeita, porque Monique respeita quem mente melhor que ela.`},
+        {w:"ALAN", t:`Eu não gosto dessa casa. As paredes são roxas de um jeito que parece que estão respirando junto com a música.`},
+        {w:"PODADOR", t:`Estão. Alguém colocou algo na fumaça. Se você começar a ver a sua avó, atira nela.`},
+        {w:"ALAN", t:`ATIRAR NA MINHA AVÓ? Que tipo de conselho é esse? Eu venero aquela mulher. Ela me fez de doce, uma vez, em sentido figurado.`},
+        {w:"PODADOR", t:`Sua avó está morta há nove anos, Alan. Se você a ver, ela não vai estar do nosso lado.`},
+        {w:"BABA CORVO", t:`Sente-se, palhaço. Eu vi sua mão. Vi árvore, vi tesoura, vi um homem que corta o que ama antes que o que ama cresça torto.`},
+        {w:"PODADOR", t:`Isso é caro?`},
+        {w:"BABA CORVO", t:`É de graça. Caro é o que vem depois. A moça de rosa me pagou pra ver a mão dela também. Sabe o que eu vi? Nada. A mão dela é lisa. Ela apagou as próprias linhas.`},
+        {w:"MONIQUE", t:`Não é verdade! A Baba está confundindo! Ela é velha! Todo mundo sempre distorce o que eu digo! É SEMPRE isso!`},
+        {w:"MONIQUE", t:`Eu só quero paz, Podador. Eu só quero paz e você morto. As duas coisas juntas. Isso é pedir muito? Depois de tudo que eu inventei que você fez comigo?`},
+        {w:"ALAN", t:`Ela falou "inventei". Ela FALOU. Anota isso. Alguém anota isso.`},
+        {w:"PODADOR", t:`Ninguém anota, Alan. Nunca anotam. É por isso que estamos aqui, com uma uzi de trinta e duas balas pra um andar de sessenta pessoas.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Baba Corvo morreu com o baralho na mão e nenhuma surpresa no rosto.`},
+        {w:"BABA CORVO", t:`Eu já tinha visto isso. Só não sabia que era hoje. É sempre a data que a gente erra... nunca o final.`},
+        {w:"ALAN", t:`Podador, ela sorriu pra mim. Ela sorriu pra BANANA. Eu vou sonhar com isso até morrer.`},
+        {w:"PODADOR", t:`Ela sorriu porque você é a coisa mais engraçada nesta casa e ela queria morrer rindo.`},
+        {w:"ALAN", t:`Você não consegue. Você não consegue me dar um elogio limpo. Você embrulha tudo em veneno como se fosse presente de amigo secreto.`},
+        {w:"PODADOR", t:`Se eu te elogiar limpo você vai achar que eu estou morrendo.`},
+        {w:"ALAN", t:`...Justo. Continua sendo grosso então. Prefiro assim.`},
+        {w:"NARRADOR", t:`Nas cartas espalhadas no chão, uma virada pra cima: a Torre. Do outro lado, escrito de caneta: "APARTAMENTO 11".`}
+      ] },
+    { name:"CAP. 6 — TRIBUNAL DAS REDES", sub:"o linchamento tem hora marcada", seed:6604, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`Monique não precisou de arma nesta noite. Ela alugou um telão na praça e projetou os prints. Editados. Recortados. Com legenda em fonte grande, porque fonte grande parece verdade.`},
+        {w:"NARRADOR", t:`Duas mil pessoas leram. Nenhuma perguntou nada. Perguntar é chato, e a legenda já vinha com a indignação incluída.`},
+        {w:"MONIQUE", t:`Olha o que você me obrigou a fazer! Eu não QUERIA expor você! Eu chorei antes de apertar enviar! Ninguém vê o meu sofrimento nisso!`},
+        {w:"PODADOR", t:`Você alugou um telão.`},
+        {w:"MONIQUE", t:`PORQUE NINGUÉM ME ESCUTA! Eu grito e o mundo faz "ah, é ela de novo". E de quem é a culpa? SUA. Você é o monstro que me transformou nisso. Eu era doce. EU REGAVA PLANTA.`},
+        {w:"ALAN", t:`Podador, tem uns quinze caras da Vardo na multidão com bastão. Eles não vieram protestar. Vieram cobrar.`},
+        {w:"PODADOR", t:`Ela conseguiu. Ela fez a rua fazer o trabalho dela de graça.`},
+        {w:"ALAN", t:`Escuta. Escuta uma coisa séria, palhaço. Se hoje der errado, eu quero que você saiba que eu nunca acreditei em uma palavra dela. Nem por um segundo.`},
+        {w:"PODADOR", t:`...`},
+        {w:"ALAN", t:`Agora me zoa, por favor. O silêncio está me matando mais que os quinze caras com bastão.`},
+        {w:"PODADOR", t:`Você é uma banana com complexo de herói e cheiro de vestiário. Melhorou?`},
+        {w:"ALAN", t:`MUITO. Vamos trabalhar.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`A multidão dispersou quando percebeu que o palhaço revidava. Indignação é corajosa até virar risco pessoal.`},
+        {w:"ALAN", t:`Sabe o que é engraçado? Metade dessa gente vai dormir hoje achando que fez o certo.`},
+        {w:"PODADOR", t:`Toda a metade. Ninguém dorme mal por linchamento coletivo. A conta se dilui.`},
+        {w:"MONIQUE", t:`Eu sou a VÍTIMA! Vocês viram? Ele bateu neles! Eu falei! EU AVISEI! Ninguém nunca me escuta até virar sangue!`},
+        {w:"PODADOR", t:`Monique. Onde você está?`},
+        {w:"MONIQUE", t:`Perto. Sempre perto. Eu tenho a chave, esqueceu? Você nunca trocou a fechadura. Isso é amor, Podador. Isso é você me querendo lá.`},
+        {w:"PODADOR", t:`É preguiça.`},
+        {w:"MONIQUE", t:`É AMOR. E hoje eu vou cobrar juros dele. Apartamento 11. Sobe. Se você não subir, eu subo. E eu levo a faca de cozinha que você me deu de aniversário, monstro.`}
+      ] },
+    { name:"CAP. 7 — O CASAMENTO VARDO", sub:"chefe: TIO ZORKA", seed:7729, boss:"TIO ZORKA",
+      pre:[
+        {w:"NARRADOR", t:`O clã inteiro se reuniu num salão alugado pra casar a sobrinha do Zorka. Trezentos convidados, quarenta armas e um bolo de cinco andares.`},
+        {w:"NARRADOR", t:`Monique foi convidada. Sentou na mesa da família. Chorou no discurso. Todos acharam bonito.`},
+        {w:"ALAN", t:`Podador, tem uma coisa que eu preciso dizer e não é zoeira: você não precisa entrar aí. Isso é raiva agora. Não é trabalho.`},
+        {w:"PODADOR", t:`Zorka mandou dois homens no meu apartamento hoje de manhã. Eles quebraram meus vasos, Alan. TODOS. Até o da samambaia que sobreviveu ao inverno.`},
+        {w:"ALAN", t:`...É trabalho, então. Retiro o que eu disse. Vamos podar o casamento.`},
+        {w:"PODADOR", t:`Você fica na porta da cozinha. Não entra no salão.`},
+        {w:"ALAN", t:`Eu entro onde eu quiser, e você não é meu pai. Meu pai era um homem sério que morreu vendendo fruta, o que é MUITO mais dignidade que você tem.`},
+        {w:"PODADOR", t:`Sua origem é literalmente uma barraca de feira, Alan.`},
+        {w:"ALAN", t:`E olha onde eu cheguei: numa guerra de máfia usando roupa de banana. Ascensão social é uma piada cruel.`},
+        {w:"MONIQUE", t:`Podador! Você não ia me deixar ter UMA noite feliz, né? Uma. Eu estava dançando. EU ESTAVA DANÇANDO E VOCÊ VEIO.`},
+        {w:"MONIQUE", t:`Você é obcecado por mim. Todo mundo vê. Você me segue, você aparece onde eu estou, você não me deixa em paz. Eu tenho MEDO de você. Escuta o meu medo, escuta como ele fica bonito quando eu falo devagar.`},
+        {w:"PODADOR", t:`Você me convidou por telegrama, Monique. Está aqui no meu bolso. Com purpurina.`},
+        {w:"MONIQUE", t:`ISSO É DISTORÇÃO. Você distorce TUDO. Zorka! ZORKA! Ele está armado! Ele veio me matar! EU FALEI que ele viria!`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`O bolo caiu primeiro. Zorka caiu por último, com o clarinete na mão, tentando tocar a nota que ele nunca acertou.`},
+        {w:"ZORKA", t:`Palhaço... me faz um favor de homem pra homem. Aquela mulher... não deixa ela falar no meu velório. Ela vai transformar em história dela. Ela sempre transforma.`},
+        {w:"PODADOR", t:`Eu não posso prometer isso. Ninguém pode.`},
+        {w:"ZORKA", t:`Eu sei. Só queria pedir em voz alta uma vez.`},
+        {w:"ALAN", t:`Podador... trezentas pessoas fugiram e ninguém chamou a polícia. Nenhuma. Nem uma ligação.`},
+        {w:"PODADOR", t:`Porque a polícia é convidada do casamento, Alan. Mesa doze.`},
+        {w:"ALAN", t:`Mesa doze. Ao lado do buffet. Claro. Onde mais?`},
+        {w:"NARRADOR", t:`Sobrou um endereço, sussurrado por uma garçonete de dezoito anos que só queria ir pra casa: apartamento 11. Ela está esperando. Ela está esperando desde a primeira ligação.`}
+      ] },
+    { name:"CAP. 8 — APARTAMENTO 11", sub:"chefe final: MONIQUE", seed:8888, boss:"MONIQUE",
+      pre:[
+        {w:"NARRADOR", t:`Apartamento 11. Terceiro andar sem elevador. Cheiro de incenso barato e de coisa guardada por muito tempo.`},
+        {w:"NARRADOR", t:`Ela deixou a porta aberta. Ela sempre deixa a porta aberta: um convite que ela depois vai jurar que foi invasão.`},
+        {w:"ALAN", t:`Podador. Última chance de eu falar besteira antes da coisa séria: você está horrível. A maquiagem borrou e você parece um bolo derretido com problema de raiva.`},
+        {w:"PODADOR", t:`E você parece uma banana que passou por uma guerra e ganhou de raspão. Obrigado por vir.`},
+        {w:"ALAN", t:`...Você me agradeceu.`},
+        {w:"PODADOR", t:`Não conta pra ninguém.`},
+        {w:"ALAN", t:`Vou contar pra TODO MUNDO. Se eu sair vivo, é a primeira coisa que eu faço.`},
+        {w:"MONIQUE", t:`Entra. Fecha a porta. Não, DEIXA aberta — quero que os vizinhos escutem. Vizinho é testemunha, e testemunha é meia vitória.`},
+        {w:"MONIQUE", t:`Olha o que você fez comigo. Olha as minhas mãos tremendo. Eu não durmo há oito noites. Você tirou o meu sono, meu emprego, minha família, meu gato.`},
+        {w:"PODADOR", t:`O gato fugiu, Monique. Ele fugiu porque você mordia ele quando ficava nervosa.`},
+        {w:"MONIQUE", t:`ELE ME PROVOCAVA! Você sempre defende todo mundo menos eu! Você é um macho escroto, um lixo, um MONSTRO — e o pior é que eu te amei. Eu te amei tanto que virou isso. E isso também é culpa sua.`},
+        {w:"MONIQUE", t:`Eu tenho quatro homens na escada, dois no telhado, uma faca na cintura e uma história pronta pra contar amanhã. Na história, eu sobrevivo e você me atacou.`},
+        {w:"MONIQUE", t:`E sabe o que é mais engraçado? Todo mundo vai acreditar. Porque você é um palhaço, Podador. E eu chorei bonito por sete anos.`},
+        {w:"PODADOR", t:`Alan. Se der errado, some. Sem discurso.`},
+        {w:"ALAN", t:`Se der errado, eu vou estar exatamente aqui, sendo a coisa amarela mais teimosa dessa cidade. Poda ela, palhaço.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Ela ficou de joelhos no meio da sala, entre os quatro da escada e os dois do telhado, e não chorou. Foi a primeira vez.`},
+        {w:"MONIQUE", t:`Você não vai fazer nada. Você não é assim. Eu conheço você melhor que você.`},
+        {w:"PODADOR", t:`Você conhece o palhaço. O palhaço é fantasia.`},
+        {w:"MONIQUE", t:`Então me mata. MATA. Vira o monstro que eu contei pra todo mundo que você era. Faz eu ter razão. É a única coisa que eu sempre quis: TER RAZÃO.`},
+        {w:"PODADOR", t:`Não.`},
+        {w:"MONIQUE", t:`...O quê?`},
+        {w:"PODADOR", t:`Não. Eu não vou te dar isso. Você fica viva, sem máfia, sem plateia, sem telão e sem ninguém pra assistir. Boa noite, Monique.`},
+        {w:"ALAN", t:`Podador. Isso foi... isso foi maduro. Você foi maduro. Eu vou desmaiar.`},
+        {w:"PODADOR", t:`Cala a boca e desce a escada, banana.`}
+      ] }
+  ],
+  ending:[
+    {w:"NARRADOR", t:`A Máfia Vardo acabou naquela madrugada. Não por justiça: por falta de gente disposta a atender o telefone dela.`},
+    {w:"NARRADOR", t:`Monique saiu do apartamento 11 três dias depois, com uma mala e um roteiro novo. Foi vista num bairro que nunca tinha ouvido falar do Podador.`},
+    {w:"NARRADOR", t:`Ela já estava chorando na padaria, contando pra uma desconhecida sobre um palhaço horrível que destruiu a vida dela. A desconhecida acreditou. Acreditam sempre.`},
+    {w:"ALAN", t:`Ela vai fazer isso de novo, né?`},
+    {w:"PODADOR", t:`Vai. Com outro nome, outra cidade, outro coitado.`},
+    {w:"ALAN", t:`E a gente vai atrás?`},
+    {w:"PODADOR", t:`Não. A gente vai podar árvore, dormir oito horas e comprar vaso novo. Um de cada vez, e você paga metade.`},
+    {w:"ALAN", t:`EU pago metade? Eu levei tiro de raspão por você em três bairros!`},
+    {w:"PODADOR", t:`E eu te aguentei falando em quatro. Metade, Alan.`},
+    {w:"NARRADOR", t:`Eles desceram a rua discutindo sobre vaso de samambaia, dois monstros de fantasia numa cidade que nunca ia entender quem era o monstro de verdade.`},
+    {w:"NARRADOR", t:`FIM DA CAMPANHA DO PODADOR. — Tente agora a campanha de ALAN BANANA. O culto da calcinha vermelha está esperando.`}
+  ]
+};
+STORY.alan = {
+  title: "ALAN BANANA",
+  sub: "campanha da fruta blindada",
+  villain: "JOHNNY CALCINHA",
+  foe: "CULTO DA CALCINHA VERMELHA",
+  prologue: [
+    {w:"NARRADOR", t:`Toda cidade tem um culto. Vila Neon tem dois: o dos que acreditam em dinheiro e o dos que acreditam em Johnny Calcinha.`},
+    {w:"NARRADOR", t:`Johnny Calcinha começou como vendedor de lingerie porta a porta. Terminou como profeta. O caminho entre as duas coisas foi mais curto do que qualquer um imagina.`},
+    {w:"NARRADOR", t:`A doutrina é simples: a roupa de baixo vermelha é a única verdade, porque é a única peça que ninguém veste pra agradar os outros. "O que está por baixo é o que é", ele prega.`},
+    {w:"NARRADOR", t:`Trezentos homens raspados, de calcinha vermelha, marchando em silêncio pelas avenidas. Ninguém ri. Já tentaram rir. Não sobrou dente pra contar.`},
+    {w:"ALAN", t:`Podador, acorda. ACORDA. Eles pregaram um panfleto na nossa porta com um GRAMPEADOR INDUSTRIAL. Furou a madeira.`},
+    {w:"PODADOR", t:`Que diz?`},
+    {w:"ALAN", t:`Diz: "A FRUTA SERÁ DESCASCADA NO DIA DO ELÁSTICO". Tem um desenho. O desenho sou EU, Podador. Com um X na cara.`},
+    {w:"PODADOR", t:`Bom desenho. Pegaram bem o seu queixo de fruta batida.`},
+    {w:"ALAN", t:`ESTOU FALANDO DE UMA AMEAÇA DE MORTE E VOCÊ ESTÁ CRITICANDO O TRAÇO?`},
+    {w:"PODADOR", t:`Estou elogiando o traço. Você é que está nervoso e não sabe receber crítica de arte.`},
+    {w:"NARRADOR", t:`A briga tinha três anos. Numa noite de outubro, Alan Banana subiu num palco de karaokê, pegou o microfone e disse ao vivo, na frente de sessenta pessoas, que Johnny Calcinha usava calcinha vermelha porque "vermelho esconde a vergonha melhor".`},
+    {w:"NARRADOR", t:`Foi a única piada da história de Vila Neon que virou motivo religioso de guerra.`},
+    {w:"JOHNNY", t:`Fruta. Você me humilhou na frente dos meus fiéis. Eu poderia ter te matado naquela noite.`},
+    {w:"JOHNNY", t:`Mas matar é rápido, e humilhação precisa de curadoria. Eu esperei três anos, criei um culto de trezentos homens, e agora eu vou fazer da sua casca um estandarte.`},
+    {w:"ALAN", t:`Ele fala bonito, hein. É a única coisa que eu respeito nesse homem de calcinha.`},
+    {w:"PODADOR", t:`Alan. Essa é a sua guerra. Eu vou contigo, mas hoje quem manda é a fruta.`},
+    {w:"ALAN", t:`...Sério? Eu no comando?`},
+    {w:"PODADOR", t:`Sério. Estou curioso pra ver o desastre. Nunca vi uma banana coordenar um massacre e quero anotar detalhes pro meu diário.`},
+    {w:"ALAN", t:`Você tem diário?`},
+    {w:"PODADOR", t:`Tenho. Você aparece nele. Sempre como "o incidente".`},
+    {w:"ALAN", t:`Eu vou roubar esse diário e ler no karaokê. AO VIVO. Com música de fundo.`},
+    {w:"NARRADOR", t:`Regra de sobrevivência: pegue a arma do chão, conte cada bala, e lembre que a faca só resolve nas costas de quem não te viu chegar.`},
+    {w:"NARRADOR", t:`Regra dois: os fiéis do Johnny não têm medo de morrer. Eles têm medo de morrer VESTIDOS.`}
+  ],
+  chapters: [
+    { name:"CAP. 1 — LAVANDERIA SAGRADA", sub:"onde o culto lava a fé", seed:1901, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`A Lavanderia Santa Elástica funciona 24 horas. Doze máquinas, todas girando vermelho. É templo, é ponto de encontro e é depósito de armas.`},
+        {w:"ALAN", t:`Plano: entro por trás, uso a faca nos dois primeiros, pego o revólver da bancada e faço o resto com calma.`},
+        {w:"PODADOR", t:`Olha ele. Olha ele planejando. Papai está tão orgulhoso que quase sente algo.`},
+        {w:"ALAN", t:`Não me chama de filho, palhaço. Você é dois anos mais velho que eu e tem menos vitaminas no corpo que uma pedra.`},
+        {w:"PODADOR", t:`Eu tenho café. Café é uma vitamina de decisão rápida.`},
+        {w:"ALAN", t:`Café é uma desculpa líquida. Fica atrás de mim e não estraga o meu stealth.`},
+        {w:"PODADOR", t:`Seu stealth. Você usa NEON, Alan. Você tem uma casca que brilha. Você é um pisca-pisca com pernas.`},
+        {w:"ALAN", t:`É camuflagem urbana! Ninguém em Vila Neon olha duas vezes pra uma luz amarela!`},
+        {w:"PODADOR", t:`Isso é... na verdade, isso é assustadoramente correto. Retiro a piada.`},
+        {w:"ALAN", t:`ANOTA NO DIÁRIO. "Hoje a banana estava certa."`},
+        {w:"NARRADOR", t:`Dentro, os fiéis dobravam roupa em silêncio absoluto e rezavam a Ladainha do Elástico, uma reza sem consoante, feita só de vogais e respiração.`}
+      ],
+      post:[
+        {w:"ALAN", t:`Podador, eles não gritaram. Nenhum. Levaram tiro e continuaram dobrando toalha até cair.`},
+        {w:"PODADOR", t:`Fé de verdade. É a coisa mais nojenta que existe: gente que não negocia.`},
+        {w:"ALAN", t:`Eu comecei essa guerra com uma piada de karaokê.`},
+        {w:"PODADOR", t:`Você começou essa guerra porque a piada era BOA. Se fosse ruim, ele te ignorava. Você matou doze homens hoje por excelência de comédia.`},
+        {w:"ALAN", t:`Isso é o pior consolo que alguém já me deu.`},
+        {w:"PODADOR", t:`É o único que eu tenho no estoque. Estou em promoção de sinceridade e você pegou o último item.`},
+        {w:"NARRADOR", t:`Num cesto de roupa suja havia um caderno de couro. Dentro, o cronograma: "DIA DO ELÁSTICO — DESCASCAR A FRUTA — PRESENÇA OBRIGATÓRIA".`}
+      ] },
+    { name:"CAP. 2 — ACADEMIA DO ELÁSTICO", sub:"músculo, incenso e barra fixa", seed:2233, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`Os fiéis treinam. Não por vaidade: por doutrina. Corpo é o cabide, ensina Johnny, e cabide torto arruína a peça.`},
+        {w:"ALAN", t:`Podador, esses caras têm ombro de porta de armário. Eu tenho ombro de fruta.`},
+        {w:"PODADOR", t:`Você tem ombro de fruta com dois anos de guerra urbana. Vale mais que academia. Eles levantam ferro, você levanta cadáver.`},
+        {w:"ALAN", t:`Isso foi motivacional e nojento ao mesmo tempo.`},
+        {w:"PODADOR", t:`É a minha assinatura. Mercado registrado.`},
+        {w:"ALAN", t:`"Marca" registrada. Marca, palhaço. Você errou.`},
+        {w:"PODADOR", t:`Eu não erro. Eu adapto. Adaptar é o que gente inteligente chama de errar com confiança.`},
+        {w:"ALAN", t:`Você é insuportável e eu daria a minha casca por você e isso me deixa profundamente irritado.`},
+        {w:"JOHNNY", t:`Fruta. Você está entrando nos meus templos um por um, como se isso fosse me machucar. Eu tenho mais templo que você tem bala.`},
+        {w:"ALAN", t:`E eu tenho mais paciência que você tem fiel, Johnny. Vou visitar TODOS. Levo bolo.`},
+        {w:"JOHNNY", t:`No Dia do Elástico eu vou te descascar em praça pública. Vou fazer disso um feriado. Vou dar folga pros meus fiéis e vender ingresso.`},
+        {w:"PODADOR", t:`Ele vai vender ingresso pra te matar. Alan, você virou entretenimento. Isso é praticamente sucesso.`},
+        {w:"ALAN", t:`Eu SEMPRE fui entretenimento. A diferença é que agora tem bilheteria e eu não fico com nada.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`No espelho da academia, escrito com giz de alfaiate: "O QUE ESTÁ POR BAIXO É O QUE É."`},
+        {w:"ALAN", t:`Sabe que a frase até faz sentido? Se ele não estivesse matando gente por causa dela, ela seria bonita.`},
+        {w:"PODADOR", t:`Toda frase de culto é bonita. É pra isso que serve. Bonita é a embalagem da coisa que você não olharia se viesse nua.`},
+        {w:"ALAN", t:`Você fala como quem já quase entrou num culto.`},
+        {w:"PODADOR", t:`Eu me visto de palhaço e mato gente à noite, Alan. Eu sou um culto de um membro só.`},
+        {w:"ALAN", t:`Dois. Eu estou aqui.`},
+        {w:"PODADOR", t:`...Dois, então. E o segundo é uma banana. Que decadência.`}
+      ] },
+    { name:"CAP. 3 — FÁBRICA DE RENDA", sub:"chefe: IRMÃO FIO", seed:3141, boss:"IRMÃO FIO",
+      pre:[
+        {w:"NARRADOR", t:`A fábrica costura a farda do culto. Irmão Fio comanda, um homem que costurava uniforme militar antes de descobrir Johnny.`},
+        {w:"NARRADOR", t:`Ele carrega tesoura industrial em cada mão e nunca disse mais de nove palavras seguidas na vida.`},
+        {w:"ALAN", t:`Tesoura. Podador, o cara luta com TESOURA. É a sua área. Toma, assume tu.`},
+        {w:"PODADOR", t:`Não. Você é o comandante hoje. Eu prometi. Estou aqui só como comentarista esportivo e testemunha do seu ridículo.`},
+        {w:"ALAN", t:`Você é um homem horrível.`},
+        {w:"PODADOR", t:`Eu sou um homem CONSISTENTE. Nunca prometi ser bom, só prometi aparecer.`},
+        {w:"IRMÃO FIO", t:`A fruta veio até a agulha.`},
+        {w:"ALAN", t:`Nove palavras ou menos. Impressionante.`},
+        {w:"IRMÃO FIO", t:`Seis.`},
+        {w:"ALAN", t:`...Podador, eu acho que eu gostei dele. Isso é ruim?`},
+        {w:"PODADOR", t:`É normal. Você gosta de todo mundo. É o seu defeito estrutural. Você gostaria do Johnny se ele te desse bolo.`},
+        {w:"ALAN", t:`Se ele me desse bolo eu ESCUTARIA a proposta. Não é gostar, é educação.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Irmão Fio caiu em cima da própria mesa de corte, e as tesouras continuaram abertas.`},
+        {w:"IRMÃO FIO", t:`Fruta... o Johnny não quer matar você.`},
+        {w:"ALAN", t:`Não?`},
+        {w:"IRMÃO FIO", t:`Ele quer que você VISTA. Vermelha. Na frente de todos. Depois ele mata.`},
+        {w:"ALAN", t:`...Podador, isso é MUITO pior.`},
+        {w:"PODADOR", t:`É pior e é mais inteligente. Ele não quer o seu corpo, quer a sua piada. Ele quer virar o dono da sua piada.`},
+        {w:"ALAN", t:`Sobre o meu cadáver frutado.`},
+        {w:"PODADOR", t:`Essa é a ideia geral dele, sim. Você acabou de resumir o plano do inimigo como se fosse resistência.`}
+      ] },
+    { name:"CAP. 4 — TEMPLO DO CESTO", sub:"chefe: DIÁCONO LYCRA", seed:4242, boss:"DIÁCONO LYCRA",
+      pre:[
+        {w:"NARRADOR", t:`O Templo do Cesto é um ginásio abandonado cheio de cestos de roupa suja empilhados até o teto. Cada cesto é uma confissão: o fiel deposita a roupa antiga e nunca mais a vê.`},
+        {w:"ALAN", t:`Tem umas quatro mil peças de roupa aqui. Quatro mil pessoas passaram por esse ritual.`},
+        {w:"PODADOR", t:`Quatro mil pessoas com vergonha suficiente pra querer deixar num cesto. Essa é a matéria-prima de qualquer profeta: vergonha em volume industrial.`},
+        {w:"DIÁCONO LYCRA", t:`FRUTA! Você tem CORAGEM! Aqui é o santuário! Aqui os homens deixam de mentir!`},
+        {w:"ALAN", t:`Cara, você está gritando muito.`},
+        {w:"DIÁCONO LYCRA", t:`EU GRITO PORQUE EU ACREDITO! Você ri porque você tem MEDO de acreditar em algo!`},
+        {w:"ALAN", t:`...Ok, essa acertou um pouco.`},
+        {w:"PODADOR", t:`Não deixa o homem de calcinha vermelha ganhar debate filosófico de você, Alan. Isso é vergonhoso e eu estou anotando.`},
+        {w:"ALAN", t:`ELE TEM UM PONTO! Eu rio de tudo! Eu ri no enterro do meu tio!`},
+        {w:"PODADOR", t:`Você riu no enterro do seu tio porque o caixão era pequeno e você falou "ele encolheu na lavagem". A piada foi horrível e você riu sozinho por doze minutos.`},
+        {w:"ALAN", t:`Foi uma boa piada. O contexto é que era ruim.`},
+        {w:"PODADOR", t:`O contexto era o funeral do homem, Alan.`},
+        {w:"ALAN", t:`E ele encolheu MESMO. Eu vi.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Diácono Lycra morreu gritando o nome de Johnny, e o eco do ginásio devolveu o nome três vezes antes de calar.`},
+        {w:"ALAN", t:`Podador, sério agora: e se eu estiver errado?`},
+        {w:"PODADOR", t:`Sobre o quê?`},
+        {w:"ALAN", t:`Sobre tudo. Eu fiz uma piada e virou isso. Trezentos homens vão morrer por causa de uma piada de karaokê.`},
+        {w:"PODADOR", t:`Eles não estão morrendo pela sua piada. Estão morrendo porque um homem transformou o próprio ego numa religião e cobrou entrada.`},
+        {w:"PODADOR", t:`Você não é responsável pelo que um profeta faz com o riso dele. Você é responsável por não sair descascando gente inocente. E você não descasca.`},
+        {w:"ALAN", t:`...Você é um homem bom, palhaço.`},
+        {w:"PODADOR", t:`Eu sou um homem CANSADO. Boa é a maquiagem. Vamos, comandante.`}
+      ] },
+    { name:"CAP. 5 — MOTEL DA TERCEIRA PEÇA", sub:"neon, espelho e emboscada", seed:5251, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`Johnny convocou os fiéis mais graduados num motel de doze quartos, todos espelhados, para o Concílio da Terceira Peça.`},
+        {w:"NARRADOR", t:`Era uma armadilha. Não pro Alan: pros próprios fiéis. Johnny sabia que a fruta viria e queria testar quem morre com alegria.`},
+        {w:"ALAN", t:`Ele sacrificou os próprios homens pra medir a fé deles?`},
+        {w:"PODADOR", t:`Ele fez teste de qualidade em gente. É o cúmulo do gerenciamento.`},
+        {w:"ALAN", t:`Isso me deixa com raiva de um jeito diferente. Antes era piada, agora é raiva de verdade.`},
+        {w:"PODADOR", t:`Bom. Raiva de verdade atira melhor. Mas atira mais rápido também, então conta as balas em voz alta pra eu escutar.`},
+        {w:"ALAN", t:`Doze quartos, uns vinte caras, e eu tenho uma escopeta com seis cartuchos.`},
+        {w:"PODADOR", t:`Então você tem seis mortes garantidas e catorze problemas criativos. É assim que a gente vive desde 87.`},
+        {w:"JOHNNY", t:`Fruta. Você notou que eu não estou aí? Eu nunca estou onde você chega. Você está limpando o meu quintal de graça.`},
+        {w:"ALAN", t:`Eu estou tirando o seu exército, Johnny. No fim vai sobrar você, um espelho e a sua calcinha.`},
+        {w:"JOHNNY", t:`No fim vai sobrar eu, um espelho, a minha calcinha e VOCÊ vestindo a segunda peça. Traga o palhaço. Ele vai gostar do meu trono.`},
+        {w:"PODADOR", t:`Eu não gosto de tronos. Eu poda árvore, e trono é só uma árvore que aprendeu a se sentar.`},
+        {w:"ALAN", t:`Isso foi bonito.`},
+        {w:"PODADOR", t:`Eu tenho um caderninho de frases pra hora certa. Você achou que era espontâneo?`},
+        {w:"ALAN", t:`Eu achei, sim! E agora estou magoado!`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Nos doze espelhos do último quarto, Alan viu a si mesmo doze vezes. Em nenhuma delas parecia engraçado.`},
+        {w:"ALAN", t:`Podador. Eu estou horrível.`},
+        {w:"PODADOR", t:`Você está com a casca rasgada, sangue de outro homem no peito e uma escopeta vazia. É a foto mais honesta que já tiraram de você.`},
+        {w:"ALAN", t:`Sabe o que é engraçado? Eu me visto de banana pra fazer as pessoas rirem. Foi por isso que eu comecei. Só isso.`},
+        {w:"PODADOR", t:`E você faz. Elas riem. Só que agora você também faz outra coisa, e as duas cabem na mesma casca.`},
+        {w:"ALAN", t:`Cabe muita coisa numa casca.`},
+        {w:"PODADOR", t:`Cabe até um homem decente. Já vi acontecer. Uma vez. Hoje.`}
+      ] },
+    { name:"CAP. 6 — O DESFILE", sub:"trezentos fiéis na avenida", seed:6363, boss:null,
+      pre:[
+        {w:"NARRADOR", t:`No Dia do Elástico o culto fecha a Avenida Central. Trezentos homens de calcinha vermelha, uma banda de metais e um trono carregado por seis fiéis.`},
+        {w:"NARRADOR", t:`A cidade assiste da calçada. Alguns aplaudem. Aplaudir é mais fácil do que decidir o que se pensa.`},
+        {w:"ALAN", t:`Tem criança na calçada, Podador. Tem família com criança assistindo isso.`},
+        {w:"PODADOR", t:`Tem. Então a gente trabalha por dentro do bloco, não na calçada. Nenhum tiro pra fora da avenida.`},
+        {w:"ALAN", t:`Você está me dando regra de engajamento? Você?`},
+        {w:"PODADOR", t:`Eu tenho regras, Alan. Uma. Essa. É a única, mas é firme.`},
+        {w:"ALAN", t:`Eu vou anotar no MEU diário: "hoje o palhaço me ensinou moral".`},
+        {w:"PODADOR", t:`Se você escrever isso eu queimo o seu diário e a sua cama junto.`},
+        {w:"JOHNNY", t:`FIÉIS! A FRUTA ESTÁ ENTRE NÓS! Não a toquem! Ela vem por vontade própria! Todo mundo vem por vontade própria no fim!`},
+        {w:"ALAN", t:`Ele mandou não me tocarem. Que estratégia é essa?`},
+        {w:"PODADOR", t:`Nenhuma. É teatro. Ele quer que você chegue no trono na frente de todos, pra plateia ver a coroação e a queda no mesmo ato.`},
+        {w:"ALAN", t:`Então eu vou chegar no trono. Mas eu vou chegar do meu jeito.`},
+        {w:"PODADOR", t:`Do seu jeito é o jeito errado com sorte.`},
+        {w:"ALAN", t:`É o único jeito que a gente conhece, palhaço.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`A banda parou de tocar no meio de um compasso. Metade dos fiéis fugiu. Um bando de fé é forte até a primeira dúvida em voz alta.`},
+        {w:"ALAN", t:`Cento e poucos correram. Correram, Podador! Ninguém morreu por fé, morreram por inércia!`},
+        {w:"PODADOR", t:`É sempre assim. Culto tem três crentes de verdade e duzentos e noventa e sete pessoas com medo de ficar sozinhas.`},
+        {w:"ALAN", t:`E o Johnny?`},
+        {w:"PODADOR", t:`Johnny é o único crente de verdade. É por isso que ele é perigoso e é por isso que ele está te esperando no trono, sozinho, sem uma alma.`},
+        {w:"ALAN", t:`Então acabou tudo hoje.`},
+        {w:"PODADOR", t:`Acaba. E depois a gente come pizza e você paga, porque você é o comandante e comandante paga.`},
+        {w:"ALAN", t:`ESSA regra é nova e eu não aceito.`}
+      ] },
+    { name:"CAP. 7 — CATACUMBAS DE ALGODÃO", sub:"chefe: BISPO ELÁSTICO", seed:7373, boss:"BISPO ELÁSTICO",
+      pre:[
+        {w:"NARRADOR", t:`Debaixo do templo principal há um subsolo de fardos de algodão, corredores estreitos e nenhuma luz elétrica: só velas.`},
+        {w:"NARRADOR", t:`Aqui mora o Bispo Elástico, o primeiro fiel, o homem que costurou a primeira peça com as próprias mãos e ensinou Johnny a rezar.`},
+        {w:"BISPO ELÁSTICO", t:`Fruta. Eu inventei ele, sabia? O Johnny era um vendedor magro que chorava no porta-malas do carro porque ninguém abria a porta pra ele.`},
+        {w:"ALAN", t:`E você fez dele um profeta?`},
+        {w:"BISPO ELÁSTICO", t:`Eu fiz dele alguém que não chora mais. A diferença entre profeta e coitado é quantas pessoas repetem a frase dele.`},
+        {w:"ALAN", t:`Podador, esse é o cara mais triste que eu já conheci.`},
+        {w:"PODADOR", t:`É o mais honesto também. Ele sabe exatamente o que construiu. Isso é raro e não melhora nada.`},
+        {w:"BISPO ELÁSTICO", t:`Eu não vou te deixar passar, fruta. Não porque eu acredite. Porque eu construí, e quem constrói tem que pagar o aluguel até o fim.`},
+        {w:"ALAN", t:`...Eu não quero matar esse homem.`},
+        {w:"PODADOR", t:`Eu sei. Mas ele está com uma tesoura e uma vela, e nós estamos num porão de algodão. Pensa rápido, comandante.`},
+        {w:"ALAN", t:`Algodão. VELA. Podador, sai do porão. AGORA.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`O subsolo queimou por seis horas. O Bispo não saiu. Escolheu não sair, o que é diferente de não conseguir.`},
+        {w:"ALAN", t:`Ele podia ter corrido.`},
+        {w:"PODADOR", t:`Podia. Escolheu terminar dentro da coisa que fez. Tem gente assim: preferem ser a última página do próprio livro a virar personagem de outro.`},
+        {w:"ALAN", t:`Eu não vou fazer piada disso.`},
+        {w:"PODADOR", t:`Não faz. Guarda a piada. Você vai precisar de uma boa lá em cima, no trono, e não desperdiça material com quem já pagou.`},
+        {w:"ALAN", t:`Eu tenho uma guardada há três anos.`},
+        {w:"PODADOR", t:`A do karaokê?`},
+        {w:"ALAN", t:`A segunda parte dela. Ninguém nunca escutou o final.`}
+      ] },
+    { name:"CAP. 8 — TRONO ELÁSTICO", sub:"chefe final: JOHNNY CALCINHA", seed:9999, boss:"JOHNNY CALCINHA",
+      pre:[
+        {w:"NARRADOR", t:`O templo principal é um cinema desativado. A tela foi arrancada e no lugar dela montaram o trono: madeira, veludo e trezentas peças vermelhas costuradas em volta como se fossem plumas.`},
+        {w:"JOHNNY", t:`Você chegou. E trouxe o palhaço. Que bonito. O animal de estimação e o dono, e nunca sei qual é qual.`},
+        {w:"PODADOR", t:`Eu sou o dono. Ele é o animal. Está tudo documentado.`},
+        {w:"ALAN", t:`SÉRIO? AGORA? Você vai me zoar AGORA, na frente do chefão final?`},
+        {w:"PODADOR", t:`Especialmente agora. Se eu morrer aqui eu quero que a última coisa que eu disse tenha sido engraçada.`},
+        {w:"JOHNNY", t:`Fruta, eu vou te oferecer uma última vez. Veste a peça. Sobe no trono comigo. Você é a única pessoa nesta cidade que fez os meus fiéis rirem, e riso é a única coisa que eu nunca consegui fabricar.`},
+        {w:"JOHNNY", t:`Junte-se a mim e o culto dobra em um mês. Você não entende o poder que você tem, e é justamente por isso que você tem.`},
+        {w:"ALAN", t:`Johnny... posso terminar a piada do karaokê? A de três anos atrás. Ninguém nunca ouviu o final, porque você mandou cortar a luz do bar antes.`},
+        {w:"JOHNNY", t:`...Termina.`},
+        {w:"ALAN", t:`Eu disse que você usava vermelho porque vermelho esconde a vergonha melhor. E a segunda parte era: "e eu uso amarelo porque amarelo é a cor de quem não tem vergonha nenhuma pra esconder."`},
+        {w:"ALAN", t:`A piada não era sobre você, Johnny. Era sobre mim. Você construiu um culto de trezentos homens por causa de uma piada que era sobre MIM.`},
+        {w:"JOHNNY", t:`...`},
+        {w:"JOHNNY", t:`Mata os dois. MATA OS DOIS. TRAGAM O ELÁSTICO.`},
+        {w:"PODADOR", t:`Alan, isso foi a coisa mais cruel que eu já vi um homem fazer com outro. Estou impressionado e um pouco assustado.`},
+        {w:"ALAN", t:`Eu guardei três anos, palhaço. Agora vamos podar o trono.`}
+      ],
+      post:[
+        {w:"NARRADOR", t:`Johnny Calcinha morreu sentado, o que era exatamente como ele queria: no trono, vestido do jeito dele, sem ter que explicar nada a ninguém.`},
+        {w:"JOHNNY", t:`Fruta... vai ter outro. Sempre tem outro. A cidade precisa de alguém pra dizer o que é a verdade por baixo.`},
+        {w:"ALAN", t:`Eu sei. Mas não vai ser você, e hoje isso me basta.`},
+        {w:"PODADOR", t:`Comandante, terminamos. Quer discursar?`},
+        {w:"ALAN", t:`Não. Quero pizza e quero que VOCÊ pague.`},
+        {w:"PODADOR", t:`Você é o comandante.`},
+        {w:"ALAN", t:`Eu me demito. Agora. Aqui. Comando é horrível e a comida é péssima.`},
+        {w:"PODADOR", t:`Aceito a demissão. Bem-vindo de volta ao cargo de banana.`}
+      ] }
+  ],
+  ending:[
+    {w:"NARRADOR", t:`O culto da calcinha vermelha se dissolveu em onze dias. Sem Johnny, a doutrina virou o que sempre foi: roupa.`},
+    {w:"NARRADOR", t:`Duzentos e noventa e sete homens voltaram pra casa e disseram às famílias que estavam viajando a trabalho. Ninguém perguntou. Perguntar é chato.`},
+    {w:"NARRADOR", t:`Três meses depois, Alan Banana subiu de novo num palco de karaokê em Vila Neon. Sessenta pessoas. Microfone com defeito.`},
+    {w:"NARRADOR", t:`Ele contou a piada inteira, com o final e tudo. Riram. Ninguém fundou nada. Foi a noite mais feliz da vida dele.`},
+    {w:"PODADOR", t:`Foi ruim.`},
+    {w:"ALAN", t:`Foi ÓTIMA. Sessenta pessoas riram.`},
+    {w:"PODADOR", t:`Cinquenta e nove. Uma tossiu e você contou.`},
+    {w:"ALAN", t:`Eu conto tosse. Tosse é riso interrompido. É jurisprudência da comédia.`},
+    {w:"PODADOR", t:`Você é insuportável.`},
+    {w:"ALAN", t:`E você veio. Sentou na primeira fila, de maquiagem, num karaokê, e ninguém achou estranho porque essa cidade já viu de tudo.`},
+    {w:"PODADOR", t:`Eu vim pela pizza depois.`},
+    {w:"ALAN", t:`Você veio por mim, palhaço. Eu anoto isso no diário. TODA vez.`},
+    {w:"NARRADOR", t:`FIM DA CAMPANHA DE ALAN BANANA. — Se ainda não jogou: a MONIQUE está esperando o Podador no apartamento 11.`}
+  ]
+};
+
+const CODEX = [
+  {t:"VILA NEON — 1989", b:`Cidade média do litoral, construída em cima de um pântano e de três promessas de campanha. Tem mais placa de neon que poste de luz, porque neon é barato e vergonha é caro.\n\nA polícia é um clube de bairro com arma. A imprensa é um homem chamado Ronaldo com uma máquina de escrever e opinião alugada. O resto é gente tentando pagar aluguel.`},
+  {t:"O PODADOR", b:`Nome verdadeiro nunca dito em voz alta. Funcionário da prefeitura, setor de arborização, catorze anos de casa, dois elogios em ficha e onze advertências por "conduta".\n\nVeste-se de Coringa porque foi a única fantasia que sobrou no depósito de Carnaval em 1986, e porque descobriu que gente armada hesita meio segundo diante de um palhaço. Meio segundo é uma vida inteira.\n\nFilosofia: poda-se o galho torto antes que ele decida a forma da árvore. Aplica isso a plantas e a pessoas, e nunca soube explicar direito onde termina a metáfora.`},
+  {t:"ALAN BANANA", b:`Alan, trinta e quatro anos, filho de feirante. Trabalhava como mascote de promoção de supermercado: casca amarela, sorriso de espuma, quatro horas por dia dançando na porta do hortifrúti.\n\nQuando o supermercado fechou, ele ficou com a fantasia. Modificou: reforço de couro por dentro, fita neon nas costuras, bolso lateral pra munição. É a peça de vestuário mais absurda e mais funcional de Vila Neon.\n\nÉ o único amigo do Podador. Sabe disso e usa como argumento em discussão, o que é jogo sujo e ele não pede desculpa.`},
+  {t:"MONIQUE", b:`Não existe registro confiável da vida dela antes de 1982. Existem seis versões, todas contadas por ela, todas trágicas, nenhuma igual.\n\nO método é sempre o mesmo em três atos: aproximação intensa, dependência fabricada, denúncia pública. Sai de cada ciclo com uma plateia nova e um vilão fresco.\n\nNunca bateu em ninguém. Nunca precisou. A arma dela é a certeza absoluta e sincera de que é a vítima — e é isso que torna impossível argumentar: ela não está mentindo pra você, ela está mentindo junto com você.\n\nA única coisa que ela quer, no fundo do fundo, é ter razão. Matar o Podador é secundário. Provar que ele é o monstro é o objetivo.`},
+  {t:"MÁFIA VARDO", b:`Clã de contrabando de metal, ouro e crédito. Cinco famílias, um sobrenome, nenhuma paciência.\n\nOperam no ferro-velho, no cassino, na sauna e na boate. Vivem de negócio pequeno feito com violência grande, porque violência grande economiza advogado.\n\nErro fatal do clã: aceitaram uma cliente que pagava em histórias. Quando a moeda é o choro de alguém, a inflação chega rápido e destrói tudo.`},
+  {t:"JOHNNY CALCINHA", b:`Vendedor de lingerie porta a porta, 1979 a 1984. Recorde regional de vendas em 1983. Nunca foi convidado pra festa nenhuma da empresa.\n\nFundou o Culto da Calcinha Vermelha em 1985 depois de uma noite dormindo no carro. Doutrina em uma frase: "o que está por baixo é o que é."\n\nTrezentos fiéis no auge. Homem inteligente, disciplinado e totalmente incapaz de suportar ser motivo de riso — e foi exatamente o riso que o construiu e o destruiu.`},
+  {t:"ARMAS DO CENÁRIO", b:`Nada de arsenal. Você usa o que a casa tem.\n\nFACA — silenciosa, só mata quem não te viu chegar. Contra inimigo alerta, é um cumprimento educado.\nTACO / SERRA — corpo a corpo bruto, sem munição, funciona em qualquer um, mas exige chegar perto.\nPISTOLA (9 tiros) — barulhenta, honesta.\nREVÓLVER (6) — mais forte, mais lento.\nESCOPETA (6) — limpa um corredor, acorda um bairro.\nUZI (32) e FUZIL (24) — gasta rápido, e o que gasta rápido te deixa nu no pior momento.\n\nBala é dinheiro. Barulho é convite. Conte os dois.`},
+  {t:"COMO MORRER MENOS", b:`Um tiro te mata. Um tiro mata eles. A diferença é sempre quem viu primeiro.\n\n1. Abra porta e recue: deixe eles virem por um corredor, não você entrar numa sala.\n2. Ande sem atirar quando puder. Cada tiro chama três pessoas.\n3. Corpo caído no chão é informação: o inimigo que passa por ele fica alerta.\n4. Pegue a arma do que morreu. Sempre tem algo na câmara.\n5. R reinicia na hora. A cidade te devolve. É o único carinho que ela tem.`}
+];
+
+/* ===================== MOTOR ===================== */
+const CV=document.getElementById('game'), CX=CV.getContext('2d');
+const W=640,H=360,TILE=20,COLS=4,ROWS=3,CW=11,CH=8,MW=COLS*CW,MH=ROWS*CH;
+CX.imageSmoothingEnabled=false;
+
+const PAL=[
+  [[318,62,26],[318,55,20]],[[196,60,26],[196,52,20]],[[275,55,26],[275,48,20]],
+  [[8,62,28],[8,54,22]],[[150,45,24],[150,38,19]],[[42,60,28],[42,52,22]],
+  [[228,55,26],[228,46,20]],[[334,48,22],[334,40,17]]
+];
+function hsl(h,s,l,a){ return "hsla("+h+","+s+"%,"+l+"%,"+(a===undefined?1:a)+")"; }
+
+const WEP={
+  faca:    {name:"FACA",         melee:true, stealth:true, cd:20, inf:true},
+  taco:    {name:"TACO DE PODA", melee:true, cd:26, inf:true},
+  serra:   {name:"SERRA DE PODA",melee:true, cd:22, inf:true},
+  pistola: {name:"PISTOLA",  cd:13, spread:0.04, pel:1, mag:9,  noise:270, spd:6.4},
+  revolver:{name:"REVOLVER", cd:26, spread:0.02, pel:1, mag:6,  noise:320, spd:7.0},
+  escopeta:{name:"ESCOPETA", cd:42, spread:0.22, pel:5, mag:6,  noise:340, spd:6.0},
+  uzi:     {name:"UZI",      cd:6,  spread:0.11, pel:1, mag:32, noise:300, spd:6.2, auto:true},
+  fuzil:   {name:"FUZIL",    cd:10, spread:0.05, pel:1, mag:24, noise:320, spd:7.2, auto:true}
+};
+const GUN_POOL=["pistola","pistola","revolver","escopeta","uzi","fuzil","taco","serra"];
+
+const BOSSES={
+  "NIKOLAI PUNHAL":{hp:9, mode:"charge", spd:1.75, taunts:["A CASA SEMPRE GANHA, PALHAÇO!","ELA CHOROU POR QUATRO HORAS!","VOCÊ NÃO SAI DESSE CASSINO!"]},
+  "BABA CORVO":{hp:10, mode:"spread", spd:1.0, taunts:["EU JÁ VI SUA MÃO, PALHAÇO.","A MOÇA DE ROSA APAGOU AS LINHAS DELA.","A TORRE CAI. SEMPRE CAI."]},
+  "TIO ZORKA":{hp:12, mode:"auto", spd:1.15, taunts:["VOCÊ QUEBROU O MEU CASAMENTO!","EU AFINEI ESSE CLARINETE POR VOCÊ!","ELA PAGOU EM CHORO E NÓS ACEITAMOS!"]},
+  "MONIQUE":{hp:16, mode:"boss_monique", spd:1.5, taunts:["VOCÊ É UM MACHO ESCROTO!","EU SOU A VÍTIMA DISSO! EU!","VIRA O MONSTRO! FAZ EU TER RAZÃO!","EU CHOREI BONITO POR SETE ANOS!","VOCÊ ME OBRIGOU A ISSO!","EU TENHO A CHAVE! VOCÊ NUNCA TROCOU!"]},
+  "IRMÃO FIO":{hp:9, mode:"charge", spd:1.8, taunts:["A FRUTA VEIO ATÉ A AGULHA.","CORTE.","SEIS PALAVRAS."]},
+  "DIÁCONO LYCRA":{hp:11, mode:"spread", spd:1.2, taunts:["EU GRITO PORQUE EU ACREDITO!","VOCÊ RI PORQUE TEM MEDO!","AQUI É O SANTUÁRIO!"]},
+  "BISPO ELÁSTICO":{hp:12, mode:"charge", spd:2.0, taunts:["EU INVENTEI O JOHNNY!","QUEM CONSTRÓI PAGA O ALUGUEL!","EU COSTUREI A PRIMEIRA PEÇA!"]},
+  "JOHNNY CALCINHA":{hp:18, mode:"boss_johnny", spd:1.35, taunts:["VISTE A PEÇA, FRUTA!","O QUE ESTÁ POR BAIXO É O QUE É!","EU NUNCA CONSEGUI FABRICAR RISO!","VOCÊ ME HUMILHOU NA FRENTE DELES!","TRAGAM O ELÁSTICO!"]}
+};
+
+function mul32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+const G={
+  state:"menu", menuI:0, codexI:0, camp:null, ch:0,
+  seq:null, seqI:0, seqChars:0, after:null,
+  lv:null, p:null, en:[], bul:[], dec:[], fx:[], pk:[], txt:[],
+  score:0, combo:0, comboT:0, shake:0, flash:0, trip:0, t:0,
+  cam:{x:0,y:0}, dead:0, msg:"", msgT:0, cleared:false, sound:true
+};
+
+/* ---------- geração de fase ---------- */
+function idx(x,y){ return y*MW+x; }
+function solidTile(px,py){
+  const x=Math.floor(px/TILE), y=Math.floor(py/TILE);
+  if(x<0||y<0||x>=MW||y>=MH) return true;
+  return G.lv.grid[idx(x,y)]===1;
+}
+function blocked(px,py,r){
+  return solidTile(px-r,py-r)||solidTile(px+r,py-r)||solidTile(px-r,py+r)||solidTile(px+r,py+r);
+}
+function moveEnt(e,dx,dy){
+  if(!blocked(e.x+dx,e.y,e.r)) e.x+=dx; else if(!blocked(e.x+dx*0.35,e.y,e.r)) e.x+=dx*0.35;
+  if(!blocked(e.x,e.y+dy,e.r)) e.y+=dy; else if(!blocked(e.x,e.y+dy*0.35,e.r)) e.y+=dy*0.35;
+}
+function los(x1,y1,x2,y2){
+  const d=Math.hypot(x2-x1,y2-y1), st=Math.max(2,Math.floor(d/6));
+  for(let i=1;i<st;i++){ const t=i/st; if(solidTile(x1+(x2-x1)*t,y1+(y2-y1)*t)) return false; }
+  return true;
+}
+function ctr(x,y){ return {x:x*TILE+TILE/2, y:y*TILE+TILE/2}; }
+
+function genLevel(def, camp){
+  const rnd=mul32(def.seed);
+  const grid=new Uint8Array(MW*MH).fill(1);
+  const col=new Uint8Array(MW*MH);
+  const rooms=[];
+  const arena=!!def.boss;
+
+  if(arena){
+    for(let y=1;y<MH-1;y++) for(let x=1;x<MW-1;x++){
+      grid[idx(x,y)]=0;
+      col[idx(x,y)]=(Math.floor(x/7)+Math.floor(y/5))%PAL.length;
+    }
+    for(let i=0;i<9;i++){
+      const px=3+Math.floor(rnd()*(MW-8)), py=3+Math.floor(rnd()*(MH-7));
+      for(let y=py;y<py+2;y++) for(let x=px;x<px+2;x++) grid[idx(x,y)]=1;
+    }
+    rooms.push({x0:1,y0:1,x1:MW-2,y1:MH-2});
+  } else {
+    for(let cy=0;cy<ROWS;cy++) for(let cx=0;cx<COLS;cx++){
+      const x0=cx*CW+1, y0=cy*CH+1, x1=cx*CW+CW-2, y1=cy*CH+CH-2;
+      const c=Math.floor(rnd()*PAL.length);
+      for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){ grid[idx(x,y)]=0; col[idx(x,y)]=c; }
+      // faixa psicodélica no chão
+      if(rnd()<0.6){ const by=y0+1+Math.floor(rnd()*(y1-y0-1)), c2=Math.floor(rnd()*PAL.length);
+        for(let x=x0;x<=x1;x++){ col[idx(x,by)]=c2; if(by+1<=y1) col[idx(x,by+1)]=c2; } }
+      rooms.push({cx:cx,cy:cy,x0:x0,y0:y0,x1:x1,y1:y1,i:rooms.length});
+    }
+    // árvore geradora entre células
+    const seen=new Array(COLS*ROWS).fill(false), st=[0]; seen[0]=true;
+    const carve=(a,b)=>{
+      const A=rooms[a], B=rooms[b];
+      if(A.cy===B.cy){
+        const l=A.cx<B.cx?A:B, wx=l.cx*CW+CW-1;
+        const dy=Math.max(A.y0,B.y0)+Math.floor(rnd()*3);
+        for(let y=dy;y<dy+2;y++){ grid[idx(wx,y)]=0; grid[idx(wx+1,y)]=0; col[idx(wx,y)]=col[idx(l.x1,y)]; col[idx(wx+1,y)]=col[idx(wx,y)]; }
+      } else {
+        const u=A.cy<B.cy?A:B, wy=u.cy*CH+CH-1;
+        const dx=Math.max(A.x0,B.x0)+Math.floor(rnd()*4);
+        for(let x=dx;x<dx+2;x++){ grid[idx(x,wy)]=0; grid[idx(x,wy+1)]=0; col[idx(x,wy)]=col[idx(x,u.y1)]; col[idx(x,wy+1)]=col[idx(x,wy)]; }
+      }
+    };
+    while(st.length){
+      const cur=st[st.length-1], cx=cur%COLS, cy=Math.floor(cur/COLS), nb=[];
+      if(cx>0&&!seen[cur-1])nb.push(cur-1); if(cx<COLS-1&&!seen[cur+1])nb.push(cur+1);
+      if(cy>0&&!seen[cur-COLS])nb.push(cur-COLS); if(cy<ROWS-1&&!seen[cur+COLS])nb.push(cur+COLS);
+      if(!nb.length){ st.pop(); continue; }
+      const n=nb[Math.floor(rnd()*nb.length)]; seen[n]=true; carve(cur,n); st.push(n);
+    }
+    for(let i=0;i<COLS*ROWS;i++){
+      if(i%COLS<COLS-1 && rnd()<0.35) carve(i,i+1);
+      if(i+COLS<COLS*ROWS && rnd()<0.3) carve(i,i+COLS);
+    }
+  }
+
+  const lv={grid:grid,col:col,rooms:rooms,arena:arena,name:def.name,sub:def.sub,boss:def.boss};
+  G.lv=lv;
+
+  const freeIn=(r)=>{ for(let k=0;k<60;k++){ const x=r.x0+Math.floor(rnd()*(r.x1-r.x0+1)), y=r.y0+Math.floor(rnd()*(r.y1-r.y0+1)); if(grid[idx(x,y)]===0) return ctr(x,y); } return ctr(r.x0,r.y0); };
+
+  let spawn, exitP;
+  if(arena){ spawn=ctr(3,Math.floor(MH/2)); exitP=ctr(MW-4,Math.floor(MH/2)); }
+  else { spawn=freeIn(rooms[0]); exitP=freeIn(rooms[rooms.length-1]); }
+
+  // inimigos
+  const en=[];
+  const kind = camp==="podador" ? "vardo" : "cult";
+  const total = def.boss ? 8+G.ch : 7+G.ch*2;
+  for(let i=0;i<total;i++){
+    const r = arena ? rooms[0] : rooms[1+Math.floor(rnd()*(rooms.length-1))];
+    const p=freeIn(r);
+    if(Math.hypot(p.x-spawn.x,p.y-spawn.y)<90) continue;
+    const roll=rnd();
+    const type = roll<0.34?"melee" : roll<0.72?"gun" : "shot";
+    en.push(mkEnemy(p.x,p.y,type,kind,rnd));
+  }
+  if(def.boss){
+    const b=BOSSES[def.boss];
+    const e=mkEnemy(exitP.x-30,exitP.y,"boss",kind,rnd);
+    e.hp=b.hp; e.max=b.hp; e.mode=b.mode; e.spd=b.spd; e.name=def.boss; e.taunts=b.taunts; e.r=9; e.boss=true; e.state="alert";
+    en.push(e);
+  }
+  // armas espalhadas
+  const pk=[];
+  const nW = 4+Math.floor(rnd()*3)+(def.boss?2:0);
+  for(let i=0;i<nW;i++){
+    const r = arena ? rooms[0] : rooms[Math.floor(rnd()*rooms.length)];
+    const p=freeIn(r), id=GUN_POOL[Math.floor(rnd()*GUN_POOL.length)], d=WEP[id];
+    pk.push({x:p.x,y:p.y,id:id,ammo:d.inf?-1:Math.max(2,Math.floor(d.mag*(0.4+rnd()*0.6)))});
+  }
+
+  lv.spawn=spawn; lv.exit=exitP;
+  G.en=en; G.pk=pk; G.bul=[]; G.dec=[]; G.fx=[]; G.txt=[];
+  G.p={x:spawn.x,y:spawn.y,ang:0,r:6,cd:0,inv:[{id:"faca",ammo:-1},{id:"pistola",ammo:9}],cur:1,step:0};
+  G.cleared=false; G.dead=0; G.combo=0; G.comboT=0;
+  G.trip = def.boss?0.85:0.45;
+  return lv;
+}
+
+function mkEnemy(x,y,type,kind,rnd){
+  const wep = type==="gun" ? "pistola" : type==="shot" ? "escopeta" : null;
+  return {x:x,y:y,ang:rnd()*6.28,r:6,type:type,kind:kind,state:"idle",hp:1,max:1,
+          cool:20+Math.floor(rnd()*60),tx:x,ty:y,wep:wep,dead:false,mode:null,spd:1.5,
+          wait:0,step:0,tt:0,name:null,taunts:null,boss:false,ammo:wep?4+Math.floor(rnd()*4):0};
+}
+
+/* ---------- efeitos ---------- */
+function shake(v){ G.shake=Math.min(14,G.shake+v); }
+function flash(v){ G.flash=Math.min(1,G.flash+v); }
+function toast(s){ G.msg=s; G.msgT=110; }
+function blood(x,y,n,col){ for(let i=0;i<n;i++){ const a=Math.random()*6.28, d=Math.random()*13;
+  G.dec.push({x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:1.5+Math.random()*3.5,c:col||"#c9053a"}); } }
+function spark(x,y,c){ for(let i=0;i<5;i++){ const a=Math.random()*6.28;
+  G.fx.push({x:x,y:y,vx:Math.cos(a)*(0.6+Math.random()*2),vy:Math.sin(a)*(0.6+Math.random()*2),life:14,c:c||"#ffe36b"}); } }
+function float(x,y,s,c){ G.txt.push({x:x,y:y,s:s,c:c||"#ff2e88",life:70}); }
+
+function noise(r){
+  for(const e of G.en){ if(e.dead) continue;
+    if(Math.hypot(e.x-G.p.x,e.y-G.p.y)<r) e.state="alert"; }
+}
+function alertNear(x,y,r){
+  for(const e of G.en){ if(e.dead||e.state==="alert") continue;
+    if(Math.hypot(e.x-x,e.y-y)<r) e.state="alert"; }
+}
+
+function killEnemy(e){
+  e.dead=true; e.state="dead";
+  blood(e.x,e.y,12+Math.floor(Math.random()*10));
+  shake(4); flash(0.18);
+  G.combo=Math.min(9,G.combo+1); G.comboT=170;
+  const pts=100*G.combo;
+  G.score+=pts; float(e.x,e.y-10,"+"+pts+"PTS");
+  if(e.wep && Math.random()<0.85) G.pk.push({x:e.x+(Math.random()*8-4),y:e.y+(Math.random()*8-4),id:e.wep,ammo:Math.max(1,e.ammo)});
+  else if(Math.random()<0.35) G.pk.push({x:e.x,y:e.y,id:Math.random()<0.5?"taco":"serra",ammo:-1});
+  sfx("kill");
+}
+function hurtBoss(e,d){
+  e.hp-=d; spark(e.x,e.y,"#ff2e88"); blood(e.x,e.y,4); shake(3);
+  if(e.taunts && Math.random()<0.5) float(e.x,e.y-18,e.taunts[Math.floor(Math.random()*e.taunts.length)],"#ffe36b");
+  if(e.hp<=0){ e.dead=true; e.state="dead"; blood(e.x,e.y,40); shake(12); flash(0.5); G.score+=2500; float(e.x,e.y-14,"+2500PTS"); sfx("kill"); }
+}
+function playerDie(){
+  if(G.dead) return;
+  G.dead=1; G.state="dead"; blood(G.p.x,G.p.y,26); shake(12); flash(0.6); sfx("die");
+}
+
+/* ---------- ações do jogador ---------- */
+function curWep(){ return WEP[G.p.inv[G.p.cur].id]; }
+function fire(){
+  const p=G.p, slot=p.inv[p.cur], def=WEP[slot.id];
+  if(p.cd>0||G.dead||G.state!=="play") return;
+  if(def.melee){ melee(def); p.cd=def.cd; return; }
+  if(slot.ammo<=0){ p.cd=18; toast("SEM MUNIÇÃO — PEGUE UMA ARMA (E)"); sfx("dry"); return; }
+  slot.ammo--; p.cd=def.cd;
+  let la=p.ang;
+  for(let i=0;i<def.pel;i++){
+    const a=p.ang+(Math.random()-0.5)*def.spread*2; la=a;
+    G.bul.push({x:p.x+Math.cos(a)*11,y:p.y+Math.sin(a)*11,vx:Math.cos(a)*def.spd,vy:Math.sin(a)*def.spd,own:"p",life:80});
+  }
+  spark(p.x+Math.cos(la)*13,p.y+Math.sin(la)*13);
+  shake(def.pel>1?5:2); flash(0.12); noise(def.noise); sfx("shot");
+}
+function melee(def){
+  const p=G.p; let best=null,bd=26;
+  for(const e of G.en){ if(e.dead) continue;
+    const d=Math.hypot(e.x-p.x,e.y-p.y); if(d>bd) continue;
+    const dot=Math.cos(p.ang)*(e.x-p.x)/d+Math.sin(p.ang)*(e.y-p.y)/d;
+    if(dot<0.15) continue;
+    if(d<bd){ bd=d; best=e; }
+  }
+  spark(p.x+Math.cos(p.ang)*14,p.y+Math.sin(p.ang)*14,"#e9e9ff");
+  sfx("swing");
+  if(!best) return;
+  if(best.boss){
+    if(def.stealth && best.state==="alert"){ toast("A FACA NÃO ENCOSTA NO CHEFE ACORDADO"); return; }
+    hurtBoss(best,def.stealth?1:2); return;
+  }
+  if(def.stealth){
+    const dd=Math.hypot(best.x-p.x,best.y-p.y)||1;
+    const facing=Math.cos(best.ang)*(p.x-best.x)/dd+Math.sin(best.ang)*(p.y-best.y)/dd;
+    if(best.state!=="alert" || facing<0.1){ killEnemy(best); G.score+=150; }
+    else { best.state="alert"; alertNear(best.x,best.y,120); toast("A FACA SÓ PEGA DESPREVENIDO"); }
+  } else { killEnemy(best); }
+}
+function swap(){
+  if(G.p.inv.length<2) { toast("SÓ A FACA — PROCURE ARMA NO CENÁRIO"); return; }
+  G.p.cur=(G.p.cur+1)%G.p.inv.length; sfx("click");
+  const s=G.p.inv[G.p.cur]; toast(WEP[s.id].name+(s.ammo<0?"":" · "+s.ammo));
+}
+function grab(){
+  const p=G.p; let best=null,bd=26,bi=-1;
+  G.pk.forEach((k,i)=>{ const d=Math.hypot(k.x-p.x,k.y-p.y); if(d<bd){bd=d;best=k;bi=i;} });
+  if(!best){ toast("NADA POR AQUI"); return; }
+  const same=p.inv.find(s=>s.id===best.id);
+  if(same && best.ammo>0){ same.ammo+=best.ammo; }
+  else if(p.inv.length<3) p.inv.push({id:best.id,ammo:best.ammo});
+  else { p.inv[p.cur]={id:best.id,ammo:best.ammo}; }
+  if(!same) p.cur=Math.min(p.inv.length-1,p.inv.findIndex(s=>s.id===best.id));
+  G.pk.splice(bi,1); sfx("click");
+  toast("PEGOU "+WEP[best.id].name+(best.ammo<0?"":" · "+best.ammo+" BALAS"));
+}
+
+/* ---------- update ---------- */
+function updatePlay(){
+  const p=G.p;
+  if(p.cd>0) p.cd--;
+  const wx=G.cam.x+mouse.x, wy=G.cam.y+mouse.y;
+  p.ang=Math.atan2(wy-p.y,wx-p.x);
+  let dx=0,dy=0;
+  if(keys.KeyA||keys.ArrowLeft) dx--; if(keys.KeyD||keys.ArrowRight) dx++;
+  if(keys.KeyW||keys.ArrowUp) dy--; if(keys.KeyS||keys.ArrowDown) dy++;
+  if(dx||dy){ const l=Math.hypot(dx,dy); const sp=2.15; moveEnt(p,dx/l*sp,dy/l*sp); p.step+=0.28; }
+  if(mouse.down && curWep().auto) fire();
+
+  // inimigos
+  for(const e of G.en){
+    if(e.dead) continue;
+    e.tt++;
+    const d=Math.hypot(p.x-e.x,p.y-e.y);
+    const ea=Math.atan2(p.y-e.y,p.x-e.x);
+    let diff=Math.abs(((ea-e.ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+    if(e.state!=="alert" && !e.boss){
+      if(d<180 && diff<0.95 && los(e.x,e.y,p.x,p.y)){ e.state="alert"; alertNear(e.x,e.y,110); }
+      else if(d<34 && los(e.x,e.y,p.x,p.y)) e.state="alert";
+    }
+    if(e.state==="alert"){
+      if(e.boss){ bossAI(e,d,ea); continue; }
+      if(e.type==="melee"){
+        if(d>10){ moveEnt(e,Math.cos(ea)*1.55,Math.sin(ea)*1.55); e.step+=0.3; }
+        else playerDie();
+        e.ang=ea;
+      } else {
+        const want = e.type==="shot"?95:135;
+        if(d>want){ moveEnt(e,Math.cos(ea)*1.25,Math.sin(ea)*1.25); e.step+=0.25; }
+        else if(d<want*0.6){ moveEnt(e,-Math.cos(ea)*0.9,-Math.sin(ea)*0.9); e.step+=0.2; }
+        e.ang=ea;
+        e.cool--;
+        if(e.cool<=0 && los(e.x,e.y,p.x,p.y) && e.ammo>0){
+          e.ammo--;
+          const pel=e.type==="shot"?4:1, sp=e.type==="shot"?0.2:0.05;
+          for(let i=0;i<pel;i++){ const a=ea+(Math.random()-0.5)*sp*2;
+            G.bul.push({x:e.x+Math.cos(a)*10,y:e.y+Math.sin(a)*10,vx:Math.cos(a)*4.4,vy:Math.sin(a)*4.4,own:"e",life:80}); }
+          spark(e.x+Math.cos(ea)*12,e.y+Math.sin(ea)*12);
+          e.cool=e.type==="shot"?95:62; sfx("shot");
+        }
+        if(e.ammo<=0 && d<40) playerDie();
+      }
+    } else {
+      // patrulha
+      if(e.wait>0){ e.wait--; }
+      else {
+        const dd=Math.hypot(e.tx-e.x,e.ty-e.y);
+        if(dd<8){ e.wait=40+Math.floor(Math.random()*90);
+          e.tx=e.x+(Math.random()*160-80); e.ty=e.y+(Math.random()*140-70);
+          if(solidTile(e.tx,e.ty)){ e.tx=e.x; e.ty=e.y; }
+        } else { const a=Math.atan2(e.ty-e.y,e.tx-e.x); moveEnt(e,Math.cos(a)*0.62,Math.sin(a)*0.62); e.ang=a; e.step+=0.15; }
+      }
+    }
+  }
+
+  // balas
+  for(let i=G.bul.length-1;i>=0;i--){
+    const b=G.bul[i]; b.x+=b.vx; b.y+=b.vy; b.life--;
+    if(b.life<=0){ G.bul.splice(i,1); continue; }
+    if(solidTile(b.x,b.y)){ spark(b.x,b.y,"#ffffff"); G.bul.splice(i,1); continue; }
+    if(b.own==="p"){
+      let hit=false;
+      for(const e of G.en){ if(e.dead) continue;
+        if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+2){ if(e.boss) hurtBoss(e,1); else { killEnemy(e); alertNear(e.x,e.y,150); } hit=true; break; } }
+      if(hit){ G.bul.splice(i,1); continue; }
+    } else if(Math.hypot(p.x-b.x,p.y-b.y)<p.r+2){ G.bul.splice(i,1); playerDie(); continue; }
+  }
+
+  for(let i=G.fx.length-1;i>=0;i--){ const f=G.fx[i]; f.x+=f.vx; f.y+=f.vy; f.vx*=0.9; f.vy*=0.9; if(--f.life<=0) G.fx.splice(i,1); }
+  for(let i=G.txt.length-1;i>=0;i--){ const t=G.txt[i]; t.y-=0.28; if(--t.life<=0) G.txt.splice(i,1); }
+  if(G.comboT>0){ if(--G.comboT<=0) G.combo=0; }
+  if(G.msgT>0) G.msgT--;
+  if(G.shake>0) G.shake*=0.86;
+  if(G.flash>0) G.flash*=0.9;
+
+  if(!G.cleared && G.en.every(e=>e.dead)){ G.cleared=true; toast("LIMPO. VÁ ATÉ A SAÍDA (BRILHO ROSA)"); }
+  if(G.cleared && Math.hypot(p.x-G.lv.exit.x,p.y-G.lv.exit.y)<18) finishChapter();
+
+  const camx=Math.max(0,Math.min(MW*TILE-W,p.x-W/2)), camy=Math.max(0,Math.min(MH*TILE-H,p.y-H/2));
+  G.cam.x+=(camx-G.cam.x)*0.16; G.cam.y+=(camy-G.cam.y)*0.16;
+}
+
+function bossAI(e,d,ea){
+  const p=G.p;
+  e.ang=ea; e.cool--;
+  if(e.mode==="charge"){
+    if(d>14) moveEnt(e,Math.cos(ea)*e.spd,Math.sin(ea)*e.spd); else playerDie();
+    e.step+=0.3;
+    if(e.cool<=0 && d<220 && los(e.x,e.y,p.x,p.y)){
+      const a=ea+(Math.random()-0.5)*0.1;
+      G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*5.2,vy:Math.sin(a)*5.2,own:"e",life:80});
+      e.cool=70; sfx("shot");
+    }
+  } else if(e.mode==="spread"){
+    if(d>150) moveEnt(e,Math.cos(ea)*e.spd,Math.sin(ea)*e.spd);
+    else if(d<90) moveEnt(e,-Math.cos(ea)*e.spd*0.7,-Math.sin(ea)*e.spd*0.7);
+    e.step+=0.2;
+    if(e.cool<=0 && los(e.x,e.y,p.x,p.y)){
+      for(let i=-2;i<=2;i++){ const a=ea+i*0.16;
+        G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*4.2,vy:Math.sin(a)*4.2,own:"e",life:80}); }
+      e.cool=88; shake(3); sfx("shot");
+    }
+  } else if(e.mode==="auto"){
+    if(d>120) moveEnt(e,Math.cos(ea)*e.spd,Math.sin(ea)*e.spd); else if(d<70) moveEnt(e,-Math.cos(ea)*e.spd,-Math.sin(ea)*e.spd);
+    e.step+=0.22;
+    if(e.cool<=0 && los(e.x,e.y,p.x,p.y)){
+      const a=ea+(Math.random()-0.5)*0.28;
+      G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*4.8,vy:Math.sin(a)*4.8,own:"e",life:80});
+      e.cool=9; sfx("shot");
+    }
+  } else if(e.mode==="boss_monique"){
+    const orb=ea+Math.sin(e.tt/45)*1.1;
+    if(d>110) moveEnt(e,Math.cos(orb)*e.spd,Math.sin(orb)*e.spd);
+    else moveEnt(e,Math.cos(orb+1.4)*e.spd,Math.sin(orb+1.4)*e.spd);
+    e.step+=0.3;
+    if(e.cool<=0 && los(e.x,e.y,p.x,p.y)){
+      const n=e.hp<9?5:3;
+      for(let i=0;i<n;i++){ const a=ea+(i-(n-1)/2)*0.22;
+        G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*4.6,vy:Math.sin(a)*4.6,own:"e",life:80}); }
+      e.cool=e.hp<9?54:76; shake(3); flash(0.1); sfx("shot");
+      if(Math.random()<0.55) float(e.x,e.y-20,e.taunts[Math.floor(Math.random()*e.taunts.length)],"#ff8ad0");
+    }
+    if(e.tt%420===0 && e.hp<13){
+      for(let i=0;i<2;i++){
+        const a=Math.random()*6.28, x=e.x+Math.cos(a)*60, y=e.y+Math.sin(a)*60;
+        if(!solidTile(x,y)){ const m=mkEnemy(x,y,Math.random()<0.5?"melee":"gun",e.kind,Math.random); m.state="alert"; G.en.push(m); }
+      }
+      float(e.x,e.y-26,"EU TENHO GENTE NA ESCADA!","#ff8ad0"); toast("MONIQUE CHAMOU REFORÇO");
+    }
+    if(d<12) playerDie();
+  } else if(e.mode==="boss_johnny"){
+    if(d>130) moveEnt(e,Math.cos(ea)*e.spd,Math.sin(ea)*e.spd);
+    else if(d<80) moveEnt(e,-Math.cos(ea)*e.spd*0.8,-Math.sin(ea)*e.spd*0.8);
+    e.step+=0.25;
+    if(e.cool<=0 && los(e.x,e.y,p.x,p.y)){
+      if(e.hp%2===0){ for(let i=-3;i<=3;i++){ const a=ea+i*0.14;
+          G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*4.4,vy:Math.sin(a)*4.4,own:"e",life:80}); } e.cool=80; }
+      else { const a=ea+(Math.random()-0.5)*0.3;
+        G.bul.push({x:e.x+Math.cos(a)*11,y:e.y+Math.sin(a)*11,vx:Math.cos(a)*5.0,vy:Math.sin(a)*5.0,own:"e",life:80}); e.cool=11; }
+      shake(2); sfx("shot");
+      if(Math.random()<0.35) float(e.x,e.y-20,e.taunts[Math.floor(Math.random()*e.taunts.length)],"#ff5a5a");
+    }
+    if(e.tt%520===0){
+      for(let i=0;i<3;i++){ const a=Math.random()*6.28, x=e.x+Math.cos(a)*70, y=e.y+Math.sin(a)*70;
+        if(!solidTile(x,y)){ const m=mkEnemy(x,y,"melee",e.kind,Math.random); m.state="alert"; G.en.push(m); } }
+      float(e.x,e.y-26,"TRAGAM O ELÁSTICO!","#ff5a5a");
+    }
+    if(d<12) playerDie();
+  }
+}
+
+/* ---------- fluxo de campanha ---------- */
+function startCampaign(k){
+  G.camp=k; G.ch=0; G.score=0;
+  playSeq(STORY[k].prologue, ()=>startChapter());
+}
+function startChapter(){
+  const c=STORY[G.camp].chapters[G.ch];
+  playSeq(c.pre, ()=>{ genLevel(c,G.camp); G.state="play"; toast(c.name); });
+}
+function finishChapter(){
+  const c=STORY[G.camp].chapters[G.ch];
+  G.score+=1000+G.ch*250;
+  playSeq(c.post, ()=>{
+    G.ch++;
+    if(G.ch>=STORY[G.camp].chapters.length) playSeq(STORY[G.camp].ending, ()=>{ G.state="menu"; G.menuI=0; });
+    else startChapter();
+  });
+}
+function playSeq(seq,after){ G.seq=seq; G.seqI=0; G.seqChars=0; G.after=after; G.state="story"; }
+function restartLevel(){
+  const c=STORY[G.camp].chapters[G.ch];
+  genLevel(c,G.camp); G.state="play"; G.dead=0; toast("DE NOVO. A CIDADE TE DEVOLVE.");
+}
+
+/* ===================== ÁUDIO ===================== */
+let AC=null;
+function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } } return AC; }
+function tone(f,dur,type,vol,slide){
+  if(!G.sound) return; const a=ac(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type||"square"; o.frequency.setValueAtTime(f,a.currentTime);
+  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,slide),a.currentTime+dur);
+  g.gain.setValueAtTime(vol||0.08,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+dur+0.02);
+}
+function nz(dur,vol){
+  if(!G.sound) return; const a=ac(); if(!a) return;
+  const n=Math.floor(a.sampleRate*dur), b=a.createBuffer(1,n,a.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=a.createBufferSource(), g=a.createGain(); s.buffer=b; g.gain.value=vol||0.08;
+  s.connect(g); g.connect(a.destination); s.start();
+}
+function sfx(k){
+  if(!G.sound) return;
+  if(k==="shot") nz(0.08,0.11);
+  else if(k==="kill"){ nz(0.16,0.13); tone(90,0.12,"sawtooth",0.07,40); }
+  else if(k==="die"){ tone(220,0.6,"sawtooth",0.12,45); nz(0.3,0.12); }
+  else if(k==="dry") tone(140,0.05,"square",0.05);
+  else if(k==="swing") nz(0.05,0.06);
+  else if(k==="click") tone(660,0.04,"square",0.05);
+  else if(k==="type") tone(880,0.012,"square",0.02);
+}
+const BASS=[55,55,82,55,73,55,98,82];
+function music(){
+  if(!G.sound || G.state!=="play") return;
+  if(G.t%22===0){ tone(52,0.1,"sine",0.14,30); }
+  if(G.t%11===0) nz(0.02,0.03);
+  if(G.t%44===0){ const n=BASS[(G.t/44|0)%BASS.length]; tone(n,0.34,"sawtooth",0.05); tone(n*2.01,0.26,"square",0.022); }
+}
+
+/* ===================== DESENHO ===================== */
+function shadeEnt(x,y,r){ CX.fillStyle="rgba(0,0,0,.45)"; CX.beginPath(); CX.ellipse(x,y+r*0.7,r*1.15,r*0.6,0,0,6.3); CX.fill(); }
+
+function drawPawn(x,y,ang,kind,step,alert,scale){
+  const s=scale||1, sw=Math.sin(step||0)*2.2;
+  shadeEnt(x,y,7*s);
+  CX.save(); CX.translate(x,y); CX.rotate(ang);
+  let body="#6b2fb5", head="#f4efe2", acc="#3ddc84", gun="#20202c";
+  if(kind==="podador"){ body="#6b2fb5"; head="#f4efe2"; acc="#3ddc84"; }
+  else if(kind==="alan"){ body="#f5d90a"; head="#ffe95c"; acc="#8a5a2b"; }
+  else if(kind==="vardo"){ body="#7b1f2b"; head="#d9a06b"; acc="#ff2e88"; }
+  else if(kind==="cult"){ body="#efdac6"; head="#efdac6"; acc="#e01e37"; }
+  else if(kind==="monique"){ body="#ff3d9a"; head="#f6ded0"; acc="#ffffff"; }
+  else if(kind==="johnny"){ body="#efdac6"; head="#efdac6"; acc="#e01e37"; }
+  // braços
+  CX.fillStyle=body; CX.fillRect(2,-8*s+sw*0.3,7*s,3*s); CX.fillRect(2,5*s-sw*0.3,7*s,3*s);
+  // tronco
+  CX.fillStyle=body; CX.fillRect(-6*s,-6*s,12*s,12*s);
+  if(kind==="cult"||kind==="johnny"){ CX.fillStyle=acc; CX.fillRect(-6*s,1*s,12*s,5*s); }
+  if(kind==="alan"){ CX.fillStyle="#e9c400"; CX.fillRect(-6*s,-6*s,3*s,12*s); CX.fillStyle=acc; CX.fillRect(-8*s,-2*s,2*s,4*s); }
+  if(kind==="podador"){ CX.fillStyle="#2a0f45"; CX.fillRect(-6*s,-2*s,12*s,2*s); }
+  if(kind==="monique"){ CX.fillStyle="#c0136e"; CX.fillRect(-6*s,-6*s,12*s,3*s); }
+  // cabeça
+  CX.fillStyle=head; CX.beginPath(); CX.arc(0,0,4.6*s,0,6.3); CX.fill();
+  if(kind==="podador"){ CX.fillStyle=acc; CX.beginPath(); CX.arc(-2,-4.4*s,2.1*s,0,6.3); CX.arc(-2,4.4*s,2.1*s,0,6.3); CX.fill();
+    CX.fillStyle="#d51b4a"; CX.fillRect(2.4*s,-2.4*s,1.6*s,4.8*s); }
+  if(kind==="alan"){ CX.fillStyle="#2b2b4a"; CX.fillRect(1.4*s,-2.6*s,2.4*s,5.2*s); CX.fillStyle="#4fd6ff"; CX.fillRect(2.2*s,-1.8*s,1*s,3.6*s); }
+  if(kind==="vardo"){ CX.fillStyle=acc; CX.fillRect(-2.4*s,-4.6*s,3*s,9.2*s); }
+  if(kind==="cult"||kind==="johnny"){ CX.fillStyle="#00000033"; CX.beginPath(); CX.arc(-1,0,3.4*s,0,6.3); CX.fill(); }
+  if(kind==="monique"){ CX.fillStyle="#3b1020"; CX.beginPath(); CX.arc(-2.6*s,0,4.2*s,0,6.3); CX.fill(); }
+  if(kind==="johnny"){ CX.fillStyle="#e01e37"; CX.fillRect(-5*s,-6.4*s,10*s,2*s); }
+  // arma
+  CX.fillStyle=gun; CX.fillRect(7*s,-1.4*s,8*s,2.8*s);
+  CX.restore();
+  if(alert){ CX.fillStyle="#ff2e88"; CX.font='bold 9px "Courier New",monospace'; CX.fillText("!",x-2,y-11*s); }
+}
+
+function drawWorld(){
+  const ox=Math.round(G.cam.x - (Math.random()-0.5)*G.shake), oy=Math.round(G.cam.y - (Math.random()-0.5)*G.shake);
+  const hueShift=(G.t*0.35)%360, pulse=Math.sin(G.t/38)*7*G.trip;
+  CX.fillStyle="#07030c"; CX.fillRect(0,0,W,H);
+  const x0=Math.max(0,Math.floor(ox/TILE)-1), x1=Math.min(MW-1,Math.floor((ox+W)/TILE)+1);
+  const y0=Math.max(0,Math.floor(oy/TILE)-1), y1=Math.min(MH-1,Math.floor((oy+H)/TILE)+2);
+  // chão
+  for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){
+    const i=idx(x,y); if(G.lv.grid[i]===1) continue;
+    const p=PAL[G.lv.col[i]%PAL.length][(x+y)%2];
+    const h=(p[0]+hueShift*G.trip+Math.sin((x+y)/6+G.t/50)*10*G.trip)%360;
+    CX.fillStyle=hsl(Math.round(h),p[1],Math.round(p[2]+pulse*0.4));
+    CX.fillRect(x*TILE-ox,y*TILE-oy,TILE,TILE);
+  }
+  // sangue
+  for(const d of G.dec){ CX.fillStyle=d.c; CX.beginPath(); CX.arc(d.x-ox,d.y-oy,d.r,0,6.3); CX.fill(); }
+  // saída
+  if(G.cleared){ const e=G.lv.exit, pr=6+Math.sin(G.t/8)*3;
+    CX.fillStyle="rgba(255,46,136,.30)"; CX.beginPath(); CX.arc(e.x-ox,e.y-oy,16+pr,0,6.3); CX.fill();
+    CX.strokeStyle="#ff2e88"; CX.lineWidth=2; CX.beginPath(); CX.arc(e.x-ox,e.y-oy,11,0,6.3); CX.stroke();
+    CX.fillStyle="#ffd9ec"; CX.font='bold 9px "Courier New",monospace'; CX.fillText("SAIDA",e.x-ox-15,e.y-oy-16); }
+  // armas no cenário
+  for(const k of G.pk){
+    CX.save(); CX.translate(k.x-ox,k.y-oy);
+    CX.fillStyle="rgba(255,227,107,.20)"; CX.beginPath(); CX.arc(0,0,9,0,6.3); CX.fill();
+    CX.fillStyle="#2a2a38"; CX.fillRect(-6,-2,12,4); CX.fillStyle="#c9c9dd"; CX.fillRect(-6,-2,4,4);
+    CX.fillStyle="#ffe36b"; CX.font='bold 7px "Courier New",monospace';
+    CX.fillText(WEP[k.id].name.slice(0,4),-9,-6); CX.restore();
+  }
+  // inimigos mortos
+  for(const e of G.en) if(e.dead){ CX.save(); CX.translate(e.x-ox,e.y-oy); CX.rotate(e.ang);
+    CX.fillStyle="#8f2030"; CX.fillRect(-8,-5,16,10); CX.fillStyle="#d9a06b"; CX.beginPath(); CX.arc(6,0,4,0,6.3); CX.fill(); CX.restore(); }
+  // inimigos vivos
+  for(const e of G.en) if(!e.dead){
+    const kind = e.boss ? (e.name==="MONIQUE"?"monique":e.name==="JOHNNY CALCINHA"?"johnny":e.kind) : e.kind;
+    drawPawn(e.x-ox,e.y-oy,e.ang,kind,e.step,e.state==="alert"&&!e.boss,e.boss?1.6:1);
+    if(!e.boss && e.state!=="alert"){ // cone de visão
+      CX.fillStyle="rgba(255,255,255,.045)"; CX.beginPath(); CX.moveTo(e.x-ox,e.y-oy);
+      CX.arc(e.x-ox,e.y-oy,120,e.ang-0.95,e.ang+0.95); CX.closePath(); CX.fill(); }
+  }
+  // jogador
+  if(!G.dead) drawPawn(G.p.x-ox,G.p.y-oy,G.p.ang,G.camp==="podador"?"podador":"alan",G.p.step,false,1);
+  else { CX.save(); CX.translate(G.p.x-ox,G.p.y-oy); CX.rotate(G.p.ang);
+    CX.fillStyle=G.camp==="podador"?"#6b2fb5":"#f5d90a"; CX.fillRect(-9,-5,18,10); CX.restore(); }
+  // balas e faíscas
+  for(const b of G.bul){ CX.strokeStyle=b.own==="p"?"#fff7c2":"#ff5f8f"; CX.lineWidth=2;
+    CX.beginPath(); CX.moveTo(b.x-ox,b.y-oy); CX.lineTo(b.x-ox-b.vx*1.6,b.y-oy-b.vy*1.6); CX.stroke(); }
+  for(const f of G.fx){ CX.fillStyle=f.c; CX.fillRect(f.x-ox-1,f.y-oy-1,2,2); }
+  // paredes com falso relevo
+  for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){
+    const i=idx(x,y); if(G.lv.grid[i]!==1) continue;
+    const px=x*TILE-ox, py=y*TILE-oy;
+    CX.fillStyle="#170a20"; CX.fillRect(px,py,TILE,TILE);
+    const h=(320+hueShift*G.trip*0.6)%360;
+    CX.fillStyle=hsl(Math.round(h),38,Math.round(15+pulse*0.3)); CX.fillRect(px,py-5,TILE,TILE);
+    CX.fillStyle="rgba(255,46,136,.30)"; CX.fillRect(px,py-6,TILE,1.5);
+  }
+  // textos flutuantes
+  CX.font='bold 11px "Courier New",monospace';
+  for(const t of G.txt){ CX.fillStyle="rgba(0,0,0,.6)"; CX.fillText(t.s,t.x-ox-CX.measureText(t.s).width/2+1,t.y-oy+1);
+    CX.fillStyle=t.c; CX.fillText(t.s,t.x-ox-CX.measureText(t.s).width/2,t.y-oy); }
+}
+
+function psy(){
+  const a=0.05+0.09*G.trip;
+  CX.globalCompositeOperation="overlay";
+  const g=CX.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,hsl(Math.round((G.t*1.2)%360),90,55,a));
+  g.addColorStop(0.5,hsl(Math.round((G.t*1.2+120)%360),90,55,a*0.6));
+  g.addColorStop(1,hsl(Math.round((G.t*1.2+240)%360),90,55,a));
+  CX.fillStyle=g; CX.fillRect(0,0,W,H);
+  CX.globalCompositeOperation="source-over";
+  if(G.flash>0.01){ CX.fillStyle="rgba(255,255,255,"+(G.flash*0.35)+")"; CX.fillRect(0,0,W,H); }
+  CX.fillStyle="rgba(20,0,30,"+(0.10+0.06*Math.sin(G.t/30))+")"; CX.fillRect(0,0,W,H);
+}
+
+function box(x,y,w,h,fill,stroke){
+  CX.fillStyle=fill||"rgba(4,2,8,.82)"; CX.fillRect(x,y,w,h);
+  CX.strokeStyle=stroke||"#ff2e88"; CX.lineWidth=1; CX.strokeRect(x+0.5,y+0.5,w-1,h-1);
+}
+function txt(s,x,y,c,sz,bold){
+  CX.font=(bold===false?"":"bold ")+(sz||11)+'px "Courier New",monospace';
+  CX.fillStyle="rgba(0,0,0,.75)"; CX.fillText(s,x+1,y+1); CX.fillStyle=c||"#ffd9ec"; CX.fillText(s,x,y);
+}
+function wrap(s,max,sz){
+  CX.font="bold "+(sz||11)+'px "Courier New",monospace';
+  const words=s.split(" "), out=[]; let ln="";
+  for(const w of words){ const t=ln?ln+" "+w:w;
+    if(CX.measureText(t).width>max){ out.push(ln); ln=w; } else ln=t; }
+  if(ln) out.push(ln); return out;
+}
+
+function drawHUD(){
+  const c=STORY[G.camp].chapters[G.ch];
+  const sc=G.score+"pts";
+  CX.font='bold 18px "Courier New",monospace';
+  const sw=CX.measureText(sc).width;
+  CX.fillStyle="#000"; CX.fillRect(W-sw-16,6,sw+12,24);
+  txt(sc,W-sw-10,24,"#ff8ad0",18);
+  txt(c.name,10,18,"#ffd9ec",11);
+  txt(c.sub.toUpperCase(),10,31,"#ff8ad066",9);
+  const slot=G.p.inv[G.p.cur], def=WEP[slot.id];
+  const am = slot.ammo<0 ? def.name : def.name+" "+slot.ammo+"/"+def.mag+"rnds";
+  CX.font='bold 16px "Courier New",monospace';
+  const aw=CX.measureText(am).width;
+  CX.fillStyle="#000"; CX.fillRect(8,H-32,aw+12,24);
+  txt(am,14,H-14,slot.ammo===0?"#ff4d4d":"#7fffd4",16);
+  let ix=W-100;
+  G.p.inv.forEach((s,i)=>{ box(ix,H-30,88,20,i===G.p.cur?"rgba(255,46,136,.25)":"rgba(0,0,0,.6)");
+    txt(WEP[s.id].name.slice(0,8)+(s.ammo<0?"":" "+s.ammo),ix+4,H-16,i===G.p.cur?"#fff":"#ff8ad0",9); ix-=92; });
+  if(G.combo>1) txt("x"+G.combo+" COMBO",W/2-32,50,"#ffe36b",13);
+  const b=G.en.find(e=>e.boss&&!e.dead);
+  if(b){ box(W/2-110,H-56,220,14,"rgba(0,0,0,.7)");
+    CX.fillStyle="#ff2e88"; CX.fillRect(W/2-108,H-54,216*(b.hp/b.max),10);
+    txt(b.name,W/2-CX.measureText(b.name).width/2,H-60,"#ffd9ec",10); }
+  if(G.msgT>0){ const a=Math.min(1,G.msgT/40); CX.globalAlpha=a;
+    txt(G.msg,W/2-CX.measureText(G.msg).width/2,H-70,"#ffe36b",11); CX.globalAlpha=1; }
+  const en=G.en.filter(e=>!e.dead).length;
+  txt(en>0?"ALVOS: "+en:"SETOR LIMPO",10,H-40,en>0?"#ff8ad0":"#7fffd4",10);
+}
+
+function drawPortrait(who,x,y,s){
+  box(x,y,s,s,"#0b0512","#ff2e88");
+  const cx=x+s/2, cy=y+s/2+4;
+  const kind = who==="PODADOR"?"podador":who==="ALAN"?"alan":who==="MONIQUE"?"monique":
+               who==="JOHNNY"?"johnny":who==="NARRADOR"?null:"vardo";
+  if(!kind){ for(let i=0;i<80;i++){ CX.fillStyle=Math.random()<0.5?"#1b0c26":"#2c1140";
+      CX.fillRect(x+2+Math.random()*(s-6),y+2+Math.random()*(s-6),3,2); }
+    txt("TV",cx-8,cy,"#ff8ad0",12); return; }
+  CX.save(); CX.translate(cx,cy);
+  if(kind==="podador"){ CX.fillStyle="#3ddc84"; CX.beginPath(); CX.arc(0,-6,16,Math.PI,0); CX.fill();
+    CX.fillStyle="#f4efe2"; CX.beginPath(); CX.arc(0,0,13,0,6.3); CX.fill();
+    CX.fillStyle="#20202c"; CX.fillRect(-7,-4,4,3); CX.fillRect(3,-4,4,3);
+    CX.strokeStyle="#d51b4a"; CX.lineWidth=2.4; CX.beginPath(); CX.arc(0,2,8,0.25,Math.PI-0.25); CX.stroke();
+    CX.fillStyle="#6b2fb5"; CX.fillRect(-16,12,32,10); }
+  else if(kind==="alan"){ CX.fillStyle="#f5d90a"; CX.beginPath(); CX.ellipse(0,0,13,15,0,0,6.3); CX.fill();
+    CX.fillStyle="#8a5a2b"; CX.fillRect(-3,-19,6,6);
+    CX.fillStyle="#2b2b4a"; CX.fillRect(-9,-3,18,7); CX.fillStyle="#4fd6ff"; CX.fillRect(-7,-1,5,3); CX.fillRect(2,-1,5,3);
+    CX.fillStyle="#e9c400"; CX.fillRect(-14,12,28,10); }
+  else if(kind==="monique"){ CX.fillStyle="#3b1020"; CX.beginPath(); CX.arc(0,-2,16,0,6.3); CX.fill();
+    CX.fillStyle="#f6ded0"; CX.beginPath(); CX.arc(0,0,12,0,6.3); CX.fill();
+    CX.fillStyle="#20202c"; CX.fillRect(-6,-3,4,2); CX.fillRect(2,-3,4,2);
+    CX.strokeStyle="#c0136e"; CX.lineWidth=2; CX.beginPath(); CX.arc(0,9,5,Math.PI+0.4,-0.4); CX.stroke();
+    CX.fillStyle="#4fd6ff"; CX.fillRect(-5,1,1,7); CX.fillRect(4,1,1,7);
+    CX.fillStyle="#ff3d9a"; CX.fillRect(-15,13,30,9); }
+  else if(kind==="johnny"){ CX.fillStyle="#efdac6"; CX.beginPath(); CX.arc(0,0,13,0,6.3); CX.fill();
+    CX.fillStyle="#e01e37"; CX.fillRect(-14,-16,28,6);
+    CX.fillStyle="#20202c"; CX.fillRect(-7,-3,5,2); CX.fillRect(2,-3,5,2);
+    CX.fillStyle="#3b1020"; CX.fillRect(-6,6,12,2);
+    CX.fillStyle="#efdac6"; CX.fillRect(-15,12,30,10); CX.fillStyle="#e01e37"; CX.fillRect(-15,18,30,4); }
+  else { CX.fillStyle="#d9a06b"; CX.beginPath(); CX.arc(0,0,13,0,6.3); CX.fill();
+    CX.fillStyle="#ff2e88"; CX.fillRect(-14,-14,28,5);
+    CX.fillStyle="#20202c"; CX.fillRect(-7,-3,5,2); CX.fillRect(2,-3,5,2);
+    CX.fillStyle="#7b1f2b"; CX.fillRect(-15,12,30,10); }
+  CX.restore();
+}
+
+function bgPsy(){
+  CX.fillStyle="#08030f"; CX.fillRect(0,0,W,H);
+  for(let i=0;i<7;i++){
+    const r=40+i*46+Math.sin(G.t/40+i)*14;
+    CX.strokeStyle=hsl(Math.round((G.t*1.6+i*40)%360),80,55,0.13); CX.lineWidth=2;
+    CX.beginPath(); CX.arc(W/2,H/2-30,r,0,6.3); CX.stroke();
+  }
+  for(let x=0;x<W;x+=32){ CX.strokeStyle="rgba(255,46,136,.06)"; CX.beginPath(); CX.moveTo(x,0); CX.lineTo(x,H); CX.stroke(); }
+}
+
+function drawStory(){
+  bgPsy();
+  const line=G.seq[G.seqI];
+  const full=line.t, shown=full.slice(0,Math.floor(G.seqChars));
+  const bx=24, by=H-136, bw=W-48, bh=112;
+  box(bx-4,by-4,bw+8,bh+8,"rgba(255,46,136,.10)","#ff2e88");
+  const g=CX.createLinearGradient(bx,by,bx,by+bh);
+  g.addColorStop(0,"#e9e4ea"); g.addColorStop(1,"#b9b2c0");
+  box(bx,by,bw,bh,g,"#ff2e88");
+  drawPortrait(line.w,bx+8,by+8,58);
+  txt(line.w+(line.w==="MONIQUE"?" — A VÍTIMA":line.w==="PODADOR"?" — O CORINGA DA PODA":line.w==="ALAN"?", A BANANA BLINDADA":""),bx+76,by+26,"#c0136e",11);
+  const lines=wrap(shown,bw-96,11);
+  lines.slice(-4).forEach((l,i)=>txt(l,bx+76,by+48+i*14,"#1a1020",11));
+  txt("ESC pula",bx+8,by+bh-8,"#00000055",9);
+  txt("> ENTER",bx+bw-64,by+bh-8,"#c0136e",10);
+  const cap=(G.camp?STORY[G.camp].title:"")+" · "+(G.seqI+1)+"/"+G.seq.length;
+  txt(cap,24,26,"#ff8ad0",10);
+}
+
+const MENU=["CAMPANHA: O PODADOR  (vs MONIQUE)","CAMPANHA: ALAN BANANA  (vs JOHNNY CALCINHA)","ARQUIVOS DE VILA NEON","COMO JOGAR"];
+function drawMenu(){
+  bgPsy();
+  const t1="HOTLINE", t2="MONIQUE";
+  CX.font='bold 52px "Courier New",monospace';
+  CX.fillStyle="rgba(0,229,255,.75)"; CX.fillText(t1,W/2-CX.measureText(t1).width/2-3,96);
+  CX.fillStyle="rgba(255,46,136,.85)"; CX.fillText(t1,W/2-CX.measureText(t1).width/2+3,96);
+  CX.fillStyle="#fff4fb"; CX.fillText(t1,W/2-CX.measureText(t1).width/2,96);
+  CX.fillStyle="rgba(255,227,107,.8)"; CX.fillText(t2,W/2-CX.measureText(t2).width/2+3,140);
+  CX.fillStyle="#ff2e88"; CX.fillText(t2,W/2-CX.measureText(t2).width/2,140);
+  txt("PODA NEON · VILA NEON, 1989 · TIRO ISOMÉTRICO PSICODÉLICO",W/2-190,162,"#ff8ad0",11);
+  MENU.forEach((m,i)=>{
+    const y=204+i*26, sel=i===G.menuI;
+    if(sel){ box(W/2-206,y-15,412,22,"rgba(255,46,136,.18)","#ff2e88"); }
+    txt((sel?"> ":"  ")+m,W/2-196,y,sel?"#fff":"#ff8ad0",12);
+  });
+  txt("SETAS/MOUSE escolher · ENTER confirmar · M som",W/2-150,H-24,"#ff8ad066",10);
+}
+function drawHowto(){
+  bgPsy();
+  txt("COMO JOGAR",34,44,"#ff2e88",20);
+  const L=["WASD / SETAS — andar","MOUSE — mirar    CLIQUE — atirar ou golpear","C — trocar de arma    E — pegar arma do chão",
+    "R — reiniciar a fase    ESC — voltar    M — som","","UM TIRO MATA VOCÊ. UM TIRO MATA ELES.",
+    "A FACA só mata quem NÃO te viu (pelas costas ou desprevenido).","TACO e SERRA matam qualquer um, mas exigem chegar perto.",
+    "MUNIÇÃO NÃO É INFINITA: pegue armas no cenário e conte cada bala.","CADA TIRO FAZ BARULHO e chama inimigos de outras salas.",
+    "MATE TODOS e vá até a SAÍDA rosa para avançar o capítulo.","CHEFES têm barra de vida: precisam de vários tiros.",""," ESC para voltar"];
+  L.forEach((l,i)=>txt(l,34,74+i*17,i===5?"#ffe36b":"#ffd9ec",11));
+}
+function drawCodex(){
+  bgPsy();
+  txt("ARQUIVOS DE VILA NEON",24,36,"#ff2e88",16);
+  CODEX.forEach((c,i)=>{ const y=62+i*17, sel=i===G.codexI;
+    txt((sel?"> ":"  ")+c.t,24,y,sel?"#fff":"#ff8ad0",10); });
+  const c=CODEX[G.codexI];
+  box(228,52,W-252,H-84);
+  txt(c.t,240,72,"#ffe36b",12);
+  let y=92;
+  c.b.split("\n").forEach(par=>{ if(!par.trim()){ y+=8; return; }
+    wrap(par,W-286,10).forEach(l=>{ txt(l,240,y,"#ffd9ec",10); y+=13; }); y+=4; });
+  txt("SETAS trocar · ESC voltar",24,H-24,"#ff8ad066",10);
+}
+function drawDead(){
+  drawWorld(); psy();
+  CX.fillStyle="rgba(120,0,30,.35)"; CX.fillRect(0,0,W,H);
+  const s="VOCÊ MORREU";
+  CX.font='bold 34px "Courier New",monospace';
+  CX.fillStyle="#000"; CX.fillText(s,W/2-CX.measureText(s).width/2+2,H/2+2);
+  CX.fillStyle="#ff2e88"; CX.fillText(s,W/2-CX.measureText(s).width/2,H/2);
+  const l2 = G.camp==="podador" ? "MONIQUE VAI CONTAR ESSA HISTÓRIA DO JEITO DELA." : "O CULTO VAI DOBRAR A SUA CASCA COMO ESTANDARTE.";
+  txt(l2,W/2-CX.measureText(l2).width/2,H/2+26,"#ffd9ec",11);
+  txt("R — TENTAR DE NOVO      ESC — MENU",W/2-120,H/2+52,"#ffe36b",12);
+}
+
+/* ===================== ENTRADA ===================== */
+const keys={}, mouse={x:W/2,y:H/2,down:false};
+addEventListener("keydown",function(e){
+  keys[e.code]=true;
+  if(["Space","KeyC","KeyE","KeyR","Enter","Escape","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyM"].indexOf(e.code)>=0) e.preventDefault();
+  onKey(e.code);
+});
+addEventListener("keyup",function(e){ keys[e.code]=false; });
+CV.addEventListener("mousemove",function(e){ const r=CV.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)/r.width*W; mouse.y=(e.clientY-r.top)/r.height*H; });
+CV.addEventListener("mousedown",function(e){ mouse.down=true; ac(); onClick(); });
+addEventListener("mouseup",function(){ mouse.down=false; });
+CV.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+
+function onKey(k){
+  if(k==="KeyM"){ G.sound=!G.sound; toast(G.sound?"SOM LIGADO":"SOM MUDO"); }
+  if(G.state==="menu"){
+    if(k==="ArrowUp") G.menuI=(G.menuI+MENU.length-1)%MENU.length;
+    if(k==="ArrowDown") G.menuI=(G.menuI+1)%MENU.length;
+    if(k==="Enter"||k==="Space") menuPick();
+  } else if(G.state==="story"){
+    if(k==="Enter"||k==="Space") advance();
+    if(k==="Escape"){ const a=G.after; G.seq=null; if(a) a(); }
+  } else if(G.state==="play"){
+    if(k==="KeyC") swap();
+    if(k==="KeyE") grab();
+    if(k==="KeyR") restartLevel();
+    if(k==="Space") fire();
+    if(k==="Escape"){ G.state="menu"; G.menuI=0; }
+  } else if(G.state==="dead"){
+    if(k==="KeyR"||k==="Enter") restartLevel();
+    if(k==="Escape"){ G.state="menu"; G.menuI=0; }
+  } else if(G.state==="codex"){
+    if(k==="ArrowUp") G.codexI=(G.codexI+CODEX.length-1)%CODEX.length;
+    if(k==="ArrowDown") G.codexI=(G.codexI+1)%CODEX.length;
+    if(k==="Escape"||k==="Enter"){ G.state="menu"; }
+  } else if(G.state==="howto"){
+    if(k==="Escape"||k==="Enter") G.state="menu";
+  }
+}
+function onClick(){
+  if(G.state==="play") fire();
+  else if(G.state==="story") advance();
+  else if(G.state==="menu"){
+    const i=Math.round((mouse.y-204)/26);
+    if(i>=0&&i<MENU.length){ G.menuI=i; menuPick(); }
+  } else if(G.state==="howto"||G.state==="codex") G.state="menu";
+  else if(G.state==="dead") restartLevel();
+}
+function menuPick(){
+  sfx("click");
+  if(G.menuI===0) startCampaign("podador");
+  else if(G.menuI===1) startCampaign("alan");
+  else if(G.menuI===2){ G.state="codex"; G.codexI=0; }
+  else G.state="howto";
+}
+function advance(){
+  if(!G.seq) return;
+  const full=G.seq[G.seqI].t;
+  if(G.seqChars<full.length){ G.seqChars=full.length; return; }
+  G.seqI++; G.seqChars=0;
+  if(G.seqI>=G.seq.length){ const a=G.after; G.seq=null; if(a) a(); }
+}
+
+/* ===================== LOOP ===================== */
+function frame(){
+  G.t++;
+  if(G.state==="play"){ updatePlay(); drawWorld(); psy(); drawHUD(); music(); }
+  else if(G.state==="dead"){ if(G.shake>0)G.shake*=0.9; drawDead(); }
+  else if(G.state==="story"){
+    if(G.seq){ const full=G.seq[G.seqI].t;
+      if(G.seqChars<full.length){ G.seqChars+=1.9; if(G.t%3===0) sfx("type"); }
+      drawStory(); }
+  }
+  else if(G.state==="menu") drawMenu();
+  else if(G.state==="codex") drawCodex();
+  else if(G.state==="howto") drawHowto();
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
